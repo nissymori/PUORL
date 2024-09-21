@@ -7,6 +7,10 @@ import h5py
 import numpy as np
 import pyrallis
 import torch
+import jax
+import jax.numpy as jnp
+import envpool
+from tqdm import tqdm
 
 import wandb
 from utils import (
@@ -17,7 +21,7 @@ from utils import (
     OfflineRLConfig,
     make_classifier,
 )
-from offlinerl import create_awac_trainer, create_td3bc_trainer, create_iql_trainer, evaluate
+from offlinerl import make_agent, make_evaluation
 
 """
 Dataset
@@ -52,13 +56,22 @@ To understand more about experimental setting, please refer to utils/config.py a
 
 
 def train(config: OfflineRLConfig):
-    # make positive and negative environment
-    positive_env = make_pos_envs(config)
+    wandb.init(project=config.project, config=config)
+    # make positive (data) environment
+    positive_data_env = gym.make(
+        f"{config.env_name}-{config.data.positive_data_quality.replace('_', '-')}-v2"
+    )
+    # make eval env
+    eval_env = envpool.make(
+        config.eval_env_name,
+        env_type="gym",
+        num_envs=n_seeds * config.eval_episodes,
+    )
 
     # load classifier if necessary
     sas_net_param_path = make_classifier_params_path(config)
     print(sas_net_param_path, sa_net_param_path)
-    sas_net = make_classifier(config.hidden_dims, input_dim=positive_env.observation_space.shape[0])
+    sas_net = make_classifier(config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0])
     # load classifier if train_type is pu
     sas_net = (
         sas_net.load_state_dict(torch.load(sas_net_param_path))
@@ -69,9 +82,41 @@ def train(config: OfflineRLConfig):
 
     # make dataset
     shifted_dataset_path = make_shifted_dataset_path(config)
-    dataset = make_offline_rl_dataset(shifted_dataset_path, positive_env, config)
+    dataset, obs_mean, obs_std = make_offline_rl_dataset(shifted_dataset_path, positive_env, config, sas_net)
 
     # make agent
-    if 
+    algo, create_train_state, algo_config = make_agent(config)
+    train_vj = jax.jit(jax.vmap(algo.update_n_times, in_axes=(0, None, 0, None)))
+
+    # make evaluation function
+    eval_fn = make_evaluation(
+        eval_env,
+        config,
+        obs_mean,
+        obs_std,
+        algo.get_action,
+        vectorized=True,
+    )
+
+    # init train state
+    rng = jax.random.PRNGKey(config.seed)
+    rng, subkey = jax.random.split(rng)
+    rngs = jax.random.split(subkey, n_seeds)
+    example_batch = jax.tree_util.tree_map(lambda x: x[0], dataset)
+    train_state = jax.vmap(create_train_state, in_axes=(0, None, None, None))(rngs, example_batch.observation, example_batch.action, algo_config)
+
+    # train
+    num_steps = int(config.max_steps//config.n_jitted_updates)
+    eval_interval = int(config.eval_interval//config.n_jitted_updates)
+    for step in tqdm(range(num_steps)):
+        rng, subkey = jax.random.split(rng)
+        rngs = jax.random.split(subkey, n_seeds)
+        train_state, loss = train_vj(train_state, dataset, rngs, algo_config)
+        if step % eval_interval == 0:
+            eval_return = eval_fn(train_state)
+            wandb.log({"eval_return": eval_return, "step": step})
+            print(f"step: {step}, eval_return: {eval_return}")
+
+
 
     

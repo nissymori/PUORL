@@ -90,7 +90,7 @@ def get_normalization(dataset: Transition) -> float:
 
 
 def make_pos_neg_datadict(
-    shifted_dataset_path, config: OfflineRLConfig
+    shifted_dataset_path, positive_env: gym.Env, config: OfflineRLConfig
 ) -> Tuple[Dict, Dict]:
     """
     There are three types of shift:
@@ -105,37 +105,17 @@ def make_pos_neg_datadict(
     Finally, we consider the data quality for each domain, e.g. positive_data_quality = "expert", negative_data_quality = "random"
     """
     if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        if config.data.positive_env == "shifted":
-            original_env = gym.make(
-                f"{config.env_name.lower()}-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = h5py.File(shifted_dataset_path, "r")  # shifted
-            negative_datadict = d4rl.qlearning_dataset(env=original_env)  # original
-        elif config.data.positive_env == "original":
-            original_env = gym.make(
-                f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(env=original_env)
-            negative_datadict = h5py.File(shifted_dataset_path, "r")
+        positive_datadict = d4rl.qlearning_dataset(env=positive_env)
+        negative_datadict = h5py.File(shifted_dataset_path, "r")
     elif config.data.shift == "halfcheetah_vs_walker2d":
-        if config.data.positive_env == "shifted":
-            positive_env = gym.make(
-                f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            negative_env = gym.make(
-                f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(env=positive_env)
-            negative_datadict = d4rl.qlearning_dataset(env=negative_env)
-        elif config.data.positive_env == "original":
-            positive_env = gym.make(
-                f"walker2d-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            negative_env = gym.make(
-                f"halfcheetah-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(env=positive_env)
-            negative_datadict = d4rl.qlearning_dataset(env=negative_env)
+        positive_env = gym.make(
+            f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
+        )
+        negative_env = gym.make(
+            f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
+        )
+        positive_datadict = d4rl.qlearning_dataset(env=positive_env)
+        negative_datadict = d4rl.qlearning_dataset(env=negative_env)
     else:
         raise NotImplementedError
     return positive_datadict, negative_datadict
@@ -143,6 +123,7 @@ def make_pos_neg_datadict(
 
 def make_offline_rl_dataset(
     shifted_dataset_path: str,
+    positive_env: gym.Env,
     config: OfflineRLConfig,
     sas_net: nn.Module = None,
 ) -> Transition:
@@ -156,7 +137,7 @@ def make_offline_rl_dataset(
     :return: rl dataset (D4RL format)
     """
     positive_datadict, negative_datadict = make_pos_neg_datadict(
-        shifted_dataset_path, config
+        shifted_dataset_path, positive_env, config
     )
     positive_datadict = shuffle_datadict(positive_datadict)
     negative_datadict = shuffle_datadict(negative_datadict)
@@ -182,8 +163,8 @@ def make_offline_rl_dataset(
             datadict, target, sas_net, config
         )  # filter positive
 
-    dataset = get_transitions(datadict, config)
-    return dataset
+    dataset, obs_mean, obs_std = get_transitions(datadict, config)
+    return dataset, obs_mean, obs_std
 
 
 def shuffle_datadict(datadict: Dict) -> Dict:

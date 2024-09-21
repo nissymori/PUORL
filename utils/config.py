@@ -20,26 +20,6 @@ class DataConfig:
 
 
 @dataclass
-class AWACConfig:
-    # GENERAL
-    batch_size: int = 256
-    n_jitted_updates: int = 8
-    normalize_state: bool = False
-    # NETWORK
-    actor_hidden_dims: Tuple[int, ...] = (256, 256, 256, 256)
-    critic_hidden_dims: Tuple[int, ...] = (256, 256)
-    actor_lr: float = 3e-4
-    critic_lr: float = 3e-4
-    # AWAC SPECIFIC
-    beta: float = 1.0
-    tau: float = 0.003
-    discount: float = 0.99
-
-    def __hash__(self):
-        return hash(self.__repr__())
-
-
-@dataclass
 class IQLConfig:
     # GENERAL
     batch_size: int = 256
@@ -55,6 +35,9 @@ class IQLConfig:
     temperature: float = 3.0  # FYI: for Hopper-me, 6.0 produce better result from CORL
     tau: float = 0.005
     discount: float = 0.99
+
+    def __hash__(self):
+        return hash(self.__repr__())
 
 
 @dataclass
@@ -85,11 +68,11 @@ class OfflineRLConfig:
     project: str = "test-offlinerl"
     env: str = "hopper"
     seed: int = 0
+    n_seeds: int = 2
     # DATA
     data: DataConfig = DataConfig()
     # ALGORITHM
     algorithm: str = "td3bc"
-    awac: AWACConfig = AWACConfig()
     iql: IQLConfig = IQLConfig()
     td3bc: TD3BCConfig = TD3BCConfig()
     # TRAINING
