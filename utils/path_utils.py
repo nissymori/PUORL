@@ -22,22 +22,15 @@ Finally, we consider the data quality for each domain, e.g. positive_data_qualit
 
 def make_shifted_dataset_path(config):
     """
-    Data quality is determined by which env is shifted (positive or negative).
-    e.g. if positive_env == "shifted", then data_quality  refers to positive_data_quality.
+    To capture the configuration of dataset, we need to consider the following:
     """
     if config.data.shift == "halfcheetah_vs_walker2d":
         shifted_dataset_path = None
         return shifted_dataset_path
-    if config.data.positive_env == "shifted":
-        shifted_data_quality = config.data.positive_data_quality
-    elif config.data.positive_env == "original":
-        shifted_data_quality = config.data.negative_data_quality
-    else:
-        raise NotImplementedError
     shifted_dataset_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "dataset",
-        f"{config.env_name}/{config.data.shift}/{shifted_data_quality}.hdf5",
+        f"{config.env_name}/{config.data.shift}/{config.data.negative_data_quality}.hdf5",
     )
     assert os.path.exists(shifted_dataset_path)
     return shifted_dataset_path

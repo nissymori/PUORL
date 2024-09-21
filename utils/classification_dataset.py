@@ -156,33 +156,18 @@ def make_classification_dataset(
     import h5py
 
     if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        if config.data.positive_env == "shifted":
-            positive_datadict = h5py.File(shifted_dataset_path, "r")
-            original_env = gym.make(
-                f"{config.env_name.lower()}-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            negative_datadict = d4rl.qlearning_dataset(original_env)
-        elif config.data.positive_env == "original":
-            original_env = gym.make(
-                f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(original_env)
-            negative_datadict = h5py.File(shifted_dataset_path, "r")
+        original_env = gym.make(
+            f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
+        )
+        positive_datadict = d4rl.qlearning_dataset(original_env)
+        negative_datadict = h5py.File(shifted_dataset_path, "r")
     elif config.data.shift == "halfcheetah_vs_walker2d":
-        if config.data.positive_env == "shifted":
-            positive_env = gym.make(
-                f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            negative_env = gym.make(
-                f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-        elif config.data.positive_env == "original":
-            positive_env = gym.make(
-                f"walker2d-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            negative_env = gym.make(
-                f"halfcheetah-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
+        positive_env = gym.make(
+            f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
+        )
+        negative_env = gym.make(
+            f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
+        )
         positive_datadict = d4rl.qlearning_dataset(positive_env)
         negative_datadict = d4rl.qlearning_dataset(negative_env)
     positive_datadict = shuffle_datadict(positive_datadict)

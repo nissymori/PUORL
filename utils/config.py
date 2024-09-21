@@ -6,7 +6,6 @@ from typing import Sequence, Tuple
 class DataConfig:
     env_name: str = "hopper"
     shift: str = "body_mass"  # (body_mass, joint_noise, h_v_w)
-    positive_env: str = "original"  # (original shifted)
     positive_data_quality: str = "medium_expert"
     negative_data_quality: str = "random"
     input_type: str = "sas"  # (sas, sa)
