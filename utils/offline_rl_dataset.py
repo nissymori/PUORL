@@ -73,6 +73,9 @@ def get_transitions(
             observations=(dataset.observations - obs_mean) / (obs_std + 1e-5),
             next_observations=(dataset.next_observations - obs_mean) / (obs_std + 1e-5),
         )
+    if config.normalize_reward:  # normalize rewards
+        normalizing_factor = get_normalization(dataset)
+        dataset = dataset._replace(rewards=dataset.rewards / normalizing_factor)
     return dataset, obs_mean, obs_std
 
 

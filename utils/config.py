@@ -23,6 +23,7 @@ class IQLConfig:
     # GENERAL
     batch_size: int = 256
     n_jitted_updates: int = 8
+    normalize_reward: bool = True
     normalize_state: bool = False
     # TRAINING
     hidden_dims: Tuple[int, int] = (256, 256)
@@ -44,6 +45,7 @@ class TD3BCConfig:
     # GENERAL
     batch_size: int = 256
     n_jitted_updates: int = 8
+    normalize_reward: bool = False
     normalize_state: bool = True
     # NETWORK
     hidden_dims: Sequence[int] = (256, 256)
