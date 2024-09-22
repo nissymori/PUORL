@@ -51,11 +51,14 @@ To understand more about experimental setting, please refer to utils/config.py a
 
 
 @pyrallis.wrap()
-def main_pyrallis(config: OfflineRLConfig):
+def main(config: OfflineRLConfig):
     train(config)
 
 
 def train(config: OfflineRLConfig):
+    print(
+        f"Start classifier training {config.env_name}, shift: {config.data.shift}, method: {config.method}, positive data quality: {config.data.positive_data_quality}, negative data quality: {config.data.negative_data_quality}"
+    )
     wandb.init(project=config.project, config=config)
     # make positive (data) environment
     positive_data_env = gym.make(
@@ -131,4 +134,4 @@ def train(config: OfflineRLConfig):
 
 
 if __name__ == "__main__":
-    main_pyrallis()
+    main()

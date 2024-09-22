@@ -1,0 +1,15 @@
+project: puorl-classification
+env_name: hopper
+seed: 0
+method: pu
+
+data:
+  env_name: hopper
+  shift: body_mass
+  positive_data_quality: medium_expert
+  negative_data_quality: medium_expert
+  input_type: sas
+  labeled_ratio: 0.03
+  positive_ratio: 0.3
+  size: 1000000
+  train_ratio: 0.8

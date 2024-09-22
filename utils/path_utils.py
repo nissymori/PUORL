@@ -27,6 +27,20 @@ def make_shifted_dataset_path(config):
     if config.data.shift == "halfcheetah_vs_walker2d":
         shifted_dataset_path = None
         return shifted_dataset_path
+    if config.data.shift == "mixture":
+        body_mass_dataset_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "dataset",
+            f"{config.env_name}/body_mass/{config.data.negative_data_quality}.hdf5",
+        )
+        joint_dataset_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "dataset",
+            f"{config.env_name}/joint_noise/{config.data.positive_data_quality}.hdf5",
+        )
+        assert os.path.exists(body_mass_dataset_path)
+        assert os.path.exists(joint_dataset_path)
+        return (body_mass_dataset_path, joint_dataset_path)
     shifted_dataset_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "dataset",

@@ -9,8 +9,8 @@ class DataConfig:
     positive_data_quality: str = "medium_expert"
     negative_data_quality: str = "random"
     input_type: str = "sas"  # (sas, sa)
-    labeled_ratio: float = 0.05
-    positive_ratio: float = 0.7
+    labeled_ratio: float = 0.03
+    positive_ratio: float = 0.3
     size: int = 1000000
     train_ratio: float = 0.8
 
@@ -98,12 +98,12 @@ class ClassifierConfig:
     seed: int = 0
     data: DataConfig = DataConfig()
     # NETWORK
-    hidden_dims: Tuple[int, int] = (128, 128)
+    hidden_dims: Tuple[int, int] = (64, 64)
     lr: float = 1e-3
     wd: float = 5e-4
     # TRAINING
-    warm_start_epochs: int = 3
-    max_epochs: int = 100
+    warm_start_epochs: int = 10
+    epochs: int = 20
     batch_size: int = 256
     # method
     method: str = "pu"  # (pu, pvu)

@@ -9,19 +9,7 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from torch.utils import data
 
-
-def shuffle_datadict(datadict: Dict) -> Dict:
-    """
-    shuffle datadict
-    :datadict: datadict
-    :return: shuffled datadict
-    """
-    indices = np.arange(len(datadict["observations"]))
-    np.random.shuffle(indices)
-    shuffled_datadict = {
-        k: np.array(v)[indices] for k, v in datadict.items() if k in KEYS
-    }
-    return shuffled_datadict
+from .data_utils import make_pos_neg_datadict, shuffle_datadict
 
 
 def to_sas(data):
@@ -147,18 +135,26 @@ def get_PUDataSplits(data_obj, pos_size, alpha, beta, data_type=None):
 
 
 def make_classifier(hidden_dims: Tuple[int], input_dim=None):
-    net = nn.Sequential()
-    net.add_module("input", nn.Linear(input_dim, hidden_dims[0]))
-    net.add_module("input_relu", nn.ReLU())
-    for i in range(1, len(hidden_dims)):
-        net.add_module(f"fc{i}", nn.Linear(hidden_dims[i - 1], hidden_dims[i]))
-        net.add_module(f"relu{i}", nn.ReLU())
-    net.add_module("output", nn.Linear(hidden_dims[-1], 2))
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = nn.Linear(input_dim, hidden_dims[0])
+            self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
+            self.fc3 = nn.Linear(hidden_dims[1], 2)
+
+        def forward(self, x):
+            x = F.relu(self.fc1(x))
+            x = F.relu(self.fc2(x))
+            x = self.fc3(x)
+            return x
+
+    net = Net()
     return net
 
 
 def make_classification_dataset(
     shifted_dataset_path: str,
+    positive_env: str,
     device: str,
     alpha: float,
     beta: float,
@@ -169,21 +165,9 @@ def make_classification_dataset(
     import gym
     import h5py
 
-    if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        positive_env = gym.make(
-            f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
-        )
-        positive_datadict = d4rl.qlearning_dataset(positive_env)
-        negative_datadict = h5py.File(shifted_dataset_path, "r")
-    elif config.data.shift == "halfcheetah_vs_walker2d":
-        positive_env = gym.make(
-            f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
-        )
-        negative_env = gym.make(
-            f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
-        )
-        positive_datadict = d4rl.qlearning_dataset(positive_env)
-        negative_datadict = d4rl.qlearning_dataset(negative_env)
+    positive_datadict, negative_datadict = make_pos_neg_datadict(
+        shifted_dataset_path, positive_env, config
+    )
     positive_datadict = shuffle_datadict(positive_datadict)
     negative_datadict = shuffle_datadict(negative_datadict)
 
@@ -215,13 +199,13 @@ def make_classification_dataset(
     pn_testdata = PN_data(test_souce_data, test_test_negative_data)
 
     p_traindata, u_traindata = get_PUDataSplits(
-        rl_traindata, pos_size=int(pos_size * 0.8), alpha=alpha, beta=beta
+        pn_traindata, pos_size=int(pos_size * 0.8), alpha=alpha, beta=beta
     )
     p_validdata, u_validdata = get_PUDataSplits(
-        rl_validdata, pos_size=int(pos_size * 0.1), alpha=alpha, beta=beta
+        pn_validdata, pos_size=int(pos_size * 0.1), alpha=alpha, beta=beta
     )
     p_testdata, u_testdata = get_PUDataSplits(
-        rl_testdata, int(pos_size * 0.1), alpha=alpha, beta=beta
+        pn_testdata, int(pos_size * 0.1), alpha=alpha, beta=beta
     )
 
     # Create train dataloader

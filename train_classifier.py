@@ -1,6 +1,8 @@
 import os
 import time
 
+import d4rl
+import gym
 import numpy
 import pyrallis
 import torch
@@ -10,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import wandb
-from classifier import rank_inputs, test, train, train_PU_discard, validate
+from classifier import rank_inputs, test, train_PU_discard, train_PvU, validate, p_probs, u_probs, BBE_estimator
 from utils import (ClassifierConfig, make_classification_dataset,
                    make_classifier, make_classifier_params_path,
                    make_shifted_dataset_path)
@@ -22,18 +24,17 @@ def main(config: ClassifierConfig):
 
 
 def train(config):
+    print(
+        f"Start classifier training {config.env_name}, shift: {config.data.shift}, method: {config.method}, positive data quality: {config.data.positive_data_quality}, negative data quality: {config.data.negative_data_quality}"
+    )
     wandb.init(project=f"train-" + config.project, config=config)
-
+    positive_data_env = gym.make(
+        f"{config.env_name}-{config.data.positive_data_quality.replace('_', '-')}-v2"
+    )
     # paths
     shifted_dataset_path = make_shifted_dataset_path(config)
 
-    sas_param_path, sa_net_param_path = make_classifier_params_path(config)
-    if config.data.input_type == "sas":
-        param_path = sas_param_path
-    elif config.data.input_type == "sa":
-        param_path = sa_net_param_path
-    else:
-        raise ValueError("input_type must be sas or sa")
+    param_path = make_classifier_params_path(config)
 
     if not os.path.exists(param_path):
         os.makedirs(os.path.dirname(param_path), exist_ok=True)
@@ -42,8 +43,8 @@ def train(config):
     negative_num = int(config.data.size * (1 - config.data.positive_ratio))
     unlabeled_num = int(config.data.size * (1 - config.data.labeled_ratio))
 
-    alpha = (unlabeled_num - negative_num) / unlabeled_num
-    beta = (positive_num + negative_num - unlabeled_num) / (positive_num + negative_num)
+    alpha = (unlabeled_num - negative_num) / unlabeled_num  # positive data in unlabeled
+    beta = (positive_num + negative_num - unlabeled_num) / (positive_num + negative_num)  # labeled data ratio
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     (
@@ -55,6 +56,7 @@ def train(config):
         u_testloader,
     ) = make_classification_dataset(
         shifted_dataset_path,
+        positive_data_env,
         device,
         alpha,
         beta,
@@ -62,8 +64,8 @@ def train(config):
         config=config,
     )
 
-    input_dim = p_trainloader.dataset.input_dim
-    net = make_classifier(config.data.hidden_dims, input_dim=input_dim)
+    input_dim = p_trainloader.dataset.data.shape[-1]
+    net = make_classifier(config.hidden_dims, input_dim=input_dim).to(device)
 
     assert p_trainloader.dataset.__len__() <= u_trainloader.dataset.__len__()
     assert p_validloader.dataset.__len__() <= u_validloader.dataset.__len__()
@@ -81,7 +83,7 @@ def train(config):
         print("Warmup Start")
         for epoch in range(config.warm_start_epochs):
             sta = time.time()
-            train_acc = train(
+            train_acc = train_PvU(
                 epoch,
                 net,
                 p_trainloader,
@@ -171,7 +173,7 @@ def train(config):
             wandb.log(log)
     elif config.method == "pvu":  # train classifier with policy and value
         for epoch in range(config.epochs):
-            train_acc = train(
+            train_acc = train_PvU(
                 epoch,
                 net,
                 p_trainloader,
