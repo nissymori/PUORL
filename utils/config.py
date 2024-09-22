@@ -102,8 +102,8 @@ class ClassifierConfig:
     lr: float = 1e-3
     wd: float = 5e-4
     # TRAINING
-    warm_start_epochs: int = 3
-    epochs: int = 100
+    warm_start_epochs: int = 10
+    epochs: int = 20
     batch_size: int = 256
     # method
     method: str = "pu"  # (pu, pvu)
