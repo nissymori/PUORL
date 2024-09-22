@@ -156,10 +156,10 @@ def make_classification_dataset(
     import h5py
 
     if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        original_env = gym.make(
+        positive_env = gym.make(
             f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
         )
-        positive_datadict = d4rl.qlearning_dataset(original_env)
+        positive_datadict = d4rl.qlearning_dataset(positive_env)
         negative_datadict = h5py.File(shifted_dataset_path, "r")
     elif config.data.shift == "halfcheetah_vs_walker2d":
         positive_env = gym.make(

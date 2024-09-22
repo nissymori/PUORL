@@ -252,7 +252,7 @@ def filtering_by_label(
             for k, v in datadict.items()
         }
         return filtered_datadict
-    if oracle:
+    if config.method == "oracle":
         filtered_datadict = {
             k: v[datadict["true_labels"] == target_label] for k, v in datadict.items()
         }
@@ -260,16 +260,16 @@ def filtering_by_label(
         net.eval()
         positive_indices = np.where(datadict["true_labels"] == 0)[0]
         negative_indices = np.where(datadict["true_labels"] == 1)[0]
-        positive_labeled_num = int(
+        labeled_positive_num = int(
             (len(positive_indices) + len(negative_indices)) * config.data.positive_ratio
         )
         # separate positive data into labeled and unlabeled
         positively_labeled_datadict = {
-            k: v[datadict["true_labels"] == 0][:positive_labeled_num]
+            k: v[datadict["true_labels"] == 0][:labeled_positive_num]
             for k, v in datadict.items()
         }
         rest_positive_datadict = {
-            k: v[datadict["true_labels"] == 0][positive_labeled_num:]
+            k: v[datadict["true_labels"] == 0][labeled_positive_num:]
             for k, v in datadict.items()
         }
         negative_datadict = {
