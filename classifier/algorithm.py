@@ -143,7 +143,9 @@ def train_PvU(
         if use_true_label:
             u_targets = u_true_targets.to(device)
         else:
-            assert u_targets.sum() == u_targets.size(0)  # confirm that u_targets are all 1
+            assert u_targets.sum() == u_targets.size(
+                0
+            )  # confirm that u_targets are all 1
             u_targets = u_targets.to(device)
 
         assert p_targets.sum() == 0  # confirm that p_targets are all 0

@@ -147,6 +147,7 @@ def make_classifier(hidden_dims: Tuple[int], input_dim=None):
             x = F.relu(self.fc2(x))
             x = self.fc3(x)
             return x
+
     net = Net()
     return net
 

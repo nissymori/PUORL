@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import wandb
-from classifier import rank_inputs, test, train_PU_discard, train_PvU, validate
+from classifier import rank_inputs, test, train_PU_discard, train_PvU, validate, p_probs, u_probs
 from utils import (ClassifierConfig, make_classification_dataset,
                    make_classifier, make_classifier_params_path,
                    make_shifted_dataset_path)
@@ -83,7 +83,7 @@ def train(config):
         print("Warmup Start")
         for epoch in range(config.warm_start_epochs):
             sta = time.time()
-            train_acc = train(
+            train_acc = train_PvU(
                 epoch,
                 net,
                 p_trainloader,
