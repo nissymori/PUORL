@@ -92,6 +92,7 @@ class ClassifierConfig:
     # GENERAL
     project: str = "test-classifier"
     env_name: str = "hopper"
+    eval_env_name: str = "Hopper-v3"
     seed: int = 0
     data: DataConfig = DataConfig()
     # NETWORK
