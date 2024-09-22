@@ -56,6 +56,9 @@ def main(config: OfflineRLConfig):
 
 
 def train(config: OfflineRLConfig):
+    print(
+        f"Start classifier training {config.env_name}, shift: {config.data.shift}, method: {config.method}, positive data quality: {config.data.positive_data_quality}, negative data quality: {config.data.negative_data_quality}"
+    )
     wandb.init(project=config.project, config=config)
     # make positive (data) environment
     positive_data_env = gym.make(

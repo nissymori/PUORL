@@ -24,6 +24,9 @@ def main(config: ClassifierConfig):
 
 
 def train(config):
+    print(
+        f"Start classifier training {config.env_name}, shift: {config.data.shift}, method: {config.method}, positive data quality: {config.data.positive_data_quality}, negative data quality: {config.data.negative_data_quality}"
+    )
     wandb.init(project=f"train-" + config.project, config=config)
     positive_data_env = gym.make(
         f"{config.env_name}-{config.data.positive_data_quality.replace('_', '-')}-v2"
@@ -61,8 +64,8 @@ def train(config):
         config=config,
     )
 
-    input_dim = p_trainloader.dataset.input_dim
-    net = make_classifier(config.data.hidden_dims, input_dim=input_dim)
+    input_dim = p_trainloader.dataset.data.shape[-1]
+    net = make_classifier(config.hidden_dims, input_dim=input_dim)
 
     assert p_trainloader.dataset.__len__() <= u_trainloader.dataset.__len__()
     assert p_validloader.dataset.__len__() <= u_validloader.dataset.__len__()
