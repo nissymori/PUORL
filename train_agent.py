@@ -56,6 +56,10 @@ To understand more about experimental setting, please refer to utils/config.py a
 """
 
 @pyrallis.wrap()
+def main_pyrallis(config: OfflineRLConfig):
+    train(config)
+
+
 def train(config: OfflineRLConfig):
     wandb.init(project=config.project, config=config)
     # make positive (data) environment
@@ -66,18 +70,18 @@ def train(config: OfflineRLConfig):
     eval_env = envpool.make(
         config.eval_env_name,
         env_type="gym",
-        num_envs=n_seeds * config.eval_episodes,
+        num_envs=config.n_seeds * config.eval_episodes,
     )
 
     # load classifier if necessary
     sas_net_param_path = make_classifier_params_path(config)
-    print(sas_net_param_path, sa_net_param_path)
+    print(sas_net_param_path)
     sas_net = make_classifier(config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0])
-    # load classifier if train_type is pu
+    # load classifier if method is pu
     sas_net = (
         sas_net.load_state_dict(torch.load(sas_net_param_path))
-        if config.train_type == "pu"
-        or config.train_type == "pvu"
+        if config.method == "pu"
+        or config.method == "pvu"
         else None
     )
 
@@ -102,7 +106,7 @@ def train(config: OfflineRLConfig):
     # init train state
     rng = jax.random.PRNGKey(config.seed)
     rng, subkey = jax.random.split(rng)
-    rngs = jax.random.split(subkey, n_seeds)
+    rngs = jax.random.split(subkey, config.n_seeds)
     example_batch = jax.tree_util.tree_map(lambda x: x[0], dataset)
     train_state = jax.vmap(create_train_state, in_axes=(0, None, None, None))(rngs, example_batch.observation, example_batch.action, algo_config)
 
@@ -111,7 +115,7 @@ def train(config: OfflineRLConfig):
     eval_interval = int(config.eval_interval//config.n_jitted_updates)
     for step in tqdm(range(num_steps)):
         rng, subkey = jax.random.split(rng)
-        rngs = jax.random.split(subkey, n_seeds)
+        rngs = jax.random.split(subkey, config.n_seeds)
         train_state, loss = train_vj(train_state, dataset, rngs, algo_config)
         if step % eval_interval == 0:
             eval_return = eval_fn(train_state)
@@ -120,7 +124,7 @@ def train(config: OfflineRLConfig):
 
 
 if __name__ == "__main__":
-    train(config)
+    main_pyrallis()
 
 
 

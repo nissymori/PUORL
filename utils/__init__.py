@@ -1,4 +1,4 @@
-from offline_rl_dataset import make_offline_rl_dataset
+from .offline_rl_dataset import make_offline_rl_dataset
 
 from .classification_dataset import (make_classification_dataset,
                                      make_classifier)

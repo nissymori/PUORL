@@ -117,7 +117,7 @@ class TD3BC(object):
         train_state: TD3BCTrainState,
         batch: Transition,
         rng: jax.random.PRNGKey,
-        config: TD3BCConfig,
+        config,
     ) -> Tuple["TD3BCTrainState", jnp.ndarray]:
         def actor_loss_fn(actor_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
             predicted_action = train_state.actor.apply_fn(
@@ -143,7 +143,7 @@ class TD3BC(object):
         train_state: TD3BCTrainState,
         batch: Transition,
         rng: jax.random.PRNGKey,
-        config: TD3BCConfig,
+        config,
     ) -> Tuple["TD3BCTrainState", jnp.ndarray]:
         def critic_loss_fn(
             critic_params: flax.core.FrozenDict[str, Any]
@@ -190,7 +190,7 @@ class TD3BC(object):
         train_state: TD3BCTrainState,
         data,
         rng: jax.random.PRNGKey,
-        config: TD3BCConfig,
+        config,
     ) -> TD3BCTrainState:
         for _ in range(config.policy_freq):
             rng, batch_rng = jax.random.split(rng)
@@ -229,7 +229,7 @@ class TD3BC(object):
         train_state: TD3BCTrainState,
         data: Transition,
         rng: jax.random.PRNGKey,
-        config: TD3BCConfig,
+        config,
     ) -> Tuple["TD3BCTrainState", Dict]:
         def loop_fn(carry, _):
             train_state, rng = carry
@@ -250,7 +250,7 @@ class TD3BC(object):
     @classmethod
     def get_action(
         self,
-        train_state: TD3BCTrainState,
+        train_state,
         obs: jnp.ndarray,
         max_action: float = 1.0,  # In D4RL, action is scaled to [-1, 1]
     ) -> jnp.ndarray:
@@ -260,8 +260,8 @@ class TD3BC(object):
 
 
 def create_td3bc_train_state(
-    rng, observations: jnp.ndarray, actions: jnp.ndarray, config: TD3BCConfig
-) -> TD3BCTrainState:
+    rng, observations: jnp.ndarray, actions: jnp.ndarray, config
+):
     critic_model = DoubleCritic(
         hidden_dims=config.hidden_dims,
     )

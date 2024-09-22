@@ -145,7 +145,7 @@ class IQLTrainState(NamedTuple):
 class IQL(object):
 
     def update_critic(
-        self, train_state: IQLTrainState, batch: Transition, config: IQLConfig
+        self, train_state: IQLTrainState, batch: Transition, config
     ) -> Tuple["IQLTrainState", Dict]:
         def critic_loss_fn(
             critic_params: flax.core.FrozenDict[str, Any]
@@ -166,7 +166,7 @@ class IQL(object):
         return train_state._replace(critic=new_critic), critic_loss
 
     def update_value(
-        self, train_state: IQLTrainState, batch: Transition, config: IQLConfig
+        self, train_state: IQLTrainState, batch: Transition, config
     ) -> Tuple["IQLTrainState", Dict]:
         def value_loss_fn(value_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
             q1, q2 = train_state.target_critic.apply_fn(
@@ -181,7 +181,7 @@ class IQL(object):
         return train_state._replace(value=new_value), value_loss
 
     def update_actor(
-        self, train_state: IQLTrainState, batch: Transition, config: IQLConfig
+        self, train_state: IQLTrainState, batch: Transition, config
     ) -> Tuple["IQLTrainState", Dict]:
         def actor_loss_fn(actor_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
             v = train_state.value.apply_fn(train_state.value.params, batch.observations)
@@ -206,7 +206,7 @@ class IQL(object):
         train_state: IQLTrainState,
         dataset: Transition,
         rng: jax.random.PRNGKey,
-        config: IQLConfig,
+        config,
     ) -> Tuple["IQLTrainState", Dict]:
         def loop_fn(carry, _):
             train_state, rng = carry
@@ -254,7 +254,7 @@ def create_iql_train_state(
     rng,
     observations: jnp.ndarray,
     actions: jnp.ndarray,
-    config: IQLConfig,
+    config,
 ) -> IQLTrainState:
     rng, actor_rng, critic_rng, value_rng = jax.random.split(rng, 4)
     # initialize actor

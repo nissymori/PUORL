@@ -48,7 +48,7 @@ class TD3BCConfig:
     normalize_reward: bool = False
     normalize_state: bool = True
     # NETWORK
-    hidden_dims: Sequence[int] = (256, 256)
+    hidden_dims: Tuple[int, int] = (256, 256)
     critic_lr: float = 1e-3
     actor_lr: float = 1e-3
     # TD3-BC SPECIFIC
@@ -67,7 +67,8 @@ class TD3BCConfig:
 class OfflineRLConfig:
     # GENERAL
     project: str = "test-offlinerl"
-    env: str = "hopper"
+    env_name: str = "hopper"
+    eval_env_name: str = "Hopper-v3"
     seed: int = 0
     n_seeds: int = 2
     # DATA
@@ -82,6 +83,8 @@ class OfflineRLConfig:
     eval_interval: int = 10000
     eval_episodes: int = 10
     log_interval: int = 1000
+    # classifier specification
+    hidden_dims: Tuple[int, int] = (128, 128)
 
     def __hash__(self):
         return hash(self.__repr__())
@@ -92,11 +95,10 @@ class ClassifierConfig:
     # GENERAL
     project: str = "test-classifier"
     env_name: str = "hopper"
-    eval_env_name: str = "Hopper-v3"
     seed: int = 0
     data: DataConfig = DataConfig()
     # NETWORK
-    hidden_dims: Sequence[int] = (16, 16)
+    hidden_dims: Tuple[int, int] = (128, 128)
     lr: float = 1e-3
     wd: float = 5e-4
     # TRAINING

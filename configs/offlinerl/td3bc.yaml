@@ -2,9 +2,9 @@ project: puorl
 env_name: hopper
 eval_env_name: Hopper-v3
 seed: 0
-n_see
+n_seeds: 2
 algorithm: td3bc
-method: pu
+method: sharing_all
 max_steps: 1000000
 eval_episodes: 10
 log_interval: 10
@@ -24,9 +24,6 @@ data:
 td3bc:
   batch_size: 256
   n_jitted_updates: 8
-  normalize_reward: False
-  normal_state: True
-  hidden_dims: [256, 256]
   critic_lr: 1e-3
   actor_lr: 1e-3
   policy_freq: 2

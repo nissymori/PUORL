@@ -5,11 +5,11 @@ import gym
 import jax
 import jax.numpy as jnp
 import numpy as np
-
+from typing import Dict, Callable
 
 def make_evaluation(
     env,
-    config: flax.struct.PyTreeNode,
+    config: Dict,
     obs_mean: float,
     obs_std: float,
     actor_fn: Callable,
