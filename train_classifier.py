@@ -2,16 +2,18 @@ import os
 import time
 
 import numpy
+import pyrallis
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import wandb
-import pyrallis
 
-from classifier import train, validate, test, rank_inputs, train_PU_discard
-from utils import make_classifier_params_path, make_shifted_dataset_path, make_classification_dataset, ClassifierConfig, make_classifier
+import wandb
+from classifier import rank_inputs, test, train, train_PU_discard, validate
+from utils import (ClassifierConfig, make_classification_dataset,
+                   make_classifier, make_classifier_params_path,
+                   make_shifted_dataset_path)
 
 
 @pyrallis.wrap()
@@ -41,9 +43,7 @@ def train(config):
     unlabeled_num = int(config.data.size * (1 - config.data.labeled_ratio))
 
     alpha = (unlabeled_num - negative_num) / unlabeled_num
-    beta = (positive_num + negative_num - unlabeled_num) / (
-        positive_num + negative_num
-    )
+    beta = (positive_num + negative_num - unlabeled_num) / (positive_num + negative_num)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     (
@@ -61,8 +61,8 @@ def train(config):
         pos_size=positive_num + negative_num - unlabeled_num,
         config=config,
     )
-    
-    input_dim= p_trainloader.dataset.input_dim
+
+    input_dim = p_trainloader.dataset.input_dim
     net = make_classifier(config.data.hidden_dims, input_dim=input_dim)
 
     assert p_trainloader.dataset.__len__() <= u_trainloader.dataset.__len__()
@@ -76,7 +76,6 @@ def train(config):
     criterion = nn.CrossEntropyLoss()
 
     optimizer = optim.Adam(net.parameters(), lr=config.lr, weight_decay=config.wd)
-
 
     if config.method == "pu":
         print("Warmup Start")

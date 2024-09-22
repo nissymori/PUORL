@@ -34,7 +34,12 @@ class Transition(NamedTuple):
 
 
 def get_transitions(
-    dataset, config: OfflineRLConfig, clip_to_eps: bool = True, eps: float = 1e-5
+    dataset,
+    config: OfflineRLConfig,
+    clip_to_eps: bool = True,
+    eps: float = 1e-5,
+    normalize_state: bool = False,
+    normalize_reward: bool = False,
 ) -> Transition:
 
     if clip_to_eps:
@@ -57,7 +62,7 @@ def get_transitions(
         dones=jnp.array(dones, dtype=jnp.float32),
     )
     # shuffle data and select the first data_size samples
-    data_size = min(config.data.data_size, len(dataset.observations))
+    data_size = min(config.data.size, len(dataset.observations))
     rng = jax.random.PRNGKey(config.seed)
     rng, rng_permute, rng_select = jax.random.split(rng, 3)
     perm = jax.random.permutation(rng_permute, len(dataset.observations))
@@ -66,13 +71,16 @@ def get_transitions(
     dataset = jax.tree_util.tree_map(lambda x: x[:data_size], dataset)
     # normalize states
     obs_mean, obs_std = 0, 1
-    if config.normalize_state:
+    if normalize_state:
         obs_mean = dataset.observations.mean(0)
         obs_std = dataset.observations.std(0)
         dataset = dataset._replace(
             observations=(dataset.observations - obs_mean) / (obs_std + 1e-5),
             next_observations=(dataset.next_observations - obs_mean) / (obs_std + 1e-5),
         )
+    if normalize_reward:  # normalize rewards
+        normalizing_factor = get_normalization(dataset)
+        dataset = dataset._replace(rewards=dataset.rewards / normalizing_factor)
     return dataset, obs_mean, obs_std
 
 
@@ -90,7 +98,7 @@ def get_normalization(dataset: Transition) -> float:
 
 
 def make_pos_neg_datadict(
-    shifted_dataset_path, config: OfflineRLConfig
+    shifted_dataset_path, positive_env: gym.Env, config: OfflineRLConfig
 ) -> Tuple[Dict, Dict]:
     """
     There are three types of shift:
@@ -105,37 +113,17 @@ def make_pos_neg_datadict(
     Finally, we consider the data quality for each domain, e.g. positive_data_quality = "expert", negative_data_quality = "random"
     """
     if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        if config.data.positive_env == "shifted":
-            original_env = gym.make(
-                f"{config.env_name.lower()}-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = h5py.File(shifted_dataset_path, "r")  # shifted
-            negative_datadict = d4rl.qlearning_dataset(env=original_env)  # original
-        elif config.data.positive_env == "original":
-            original_env = gym.make(
-                f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(env=original_env)
-            negative_datadict = h5py.File(shifted_dataset_path, "r")
+        positive_datadict = d4rl.qlearning_dataset(env=positive_env)
+        negative_datadict = h5py.File(shifted_dataset_path, "r")
     elif config.data.shift == "halfcheetah_vs_walker2d":
-        if config.data.positive_env == "shifted":
-            positive_env = gym.make(
-                f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            negative_env = gym.make(
-                f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(env=positive_env)
-            negative_datadict = d4rl.qlearning_dataset(env=negative_env)
-        elif config.data.positive_env == "original":
-            positive_env = gym.make(
-                f"walker2d-{config.data.positive_data_quality.replace('_', '-')}-v2"
-            )
-            negative_env = gym.make(
-                f"halfcheetah-{config.data.negative_data_quality.replace('_', '-')}-v2"
-            )
-            positive_datadict = d4rl.qlearning_dataset(env=positive_env)
-            negative_datadict = d4rl.qlearning_dataset(env=negative_env)
+        positive_env = gym.make(
+            f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
+        )
+        negative_env = gym.make(
+            f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
+        )
+        positive_datadict = d4rl.qlearning_dataset(env=positive_env)
+        negative_datadict = d4rl.qlearning_dataset(env=negative_env)
     else:
         raise NotImplementedError
     return positive_datadict, negative_datadict
@@ -143,8 +131,11 @@ def make_pos_neg_datadict(
 
 def make_offline_rl_dataset(
     shifted_dataset_path: str,
+    positive_env: gym.Env,
     config: OfflineRLConfig,
     sas_net: nn.Module = None,
+    normalize_state: bool = False,
+    normalize_reward: bool = False,
 ) -> Transition:
     """
     make rl dataset
@@ -156,7 +147,7 @@ def make_offline_rl_dataset(
     :return: rl dataset (D4RL format)
     """
     positive_datadict, negative_datadict = make_pos_neg_datadict(
-        shifted_dataset_path, config
+        shifted_dataset_path, positive_env, config
     )
     positive_datadict = shuffle_datadict(positive_datadict)
     negative_datadict = shuffle_datadict(negative_datadict)
@@ -182,8 +173,13 @@ def make_offline_rl_dataset(
             datadict, target, sas_net, config
         )  # filter positive
 
-    dataset = get_transitions(datadict, config)
-    return dataset
+    dataset, obs_mean, obs_std = get_transitions(
+        datadict,
+        config,
+        normalize_state=normalize_state,
+        normalize_reward=normalize_reward,
+    )
+    return dataset, obs_mean, obs_std
 
 
 def shuffle_datadict(datadict: Dict) -> Dict:
@@ -268,7 +264,7 @@ def filtering_by_label(
             for k, v in datadict.items()
         }
         return filtered_datadict
-    if oracle:
+    if config.method == "oracle":
         filtered_datadict = {
             k: v[datadict["true_labels"] == target_label] for k, v in datadict.items()
         }
@@ -276,16 +272,16 @@ def filtering_by_label(
         net.eval()
         positive_indices = np.where(datadict["true_labels"] == 0)[0]
         negative_indices = np.where(datadict["true_labels"] == 1)[0]
-        positive_labeled_num = int(
+        labeled_positive_num = int(
             (len(positive_indices) + len(negative_indices)) * config.data.positive_ratio
         )
         # separate positive data into labeled and unlabeled
         positively_labeled_datadict = {
-            k: v[datadict["true_labels"] == 0][:positive_labeled_num]
+            k: v[datadict["true_labels"] == 0][:labeled_positive_num]
             for k, v in datadict.items()
         }
         rest_positive_datadict = {
-            k: v[datadict["true_labels"] == 0][positive_labeled_num:]
+            k: v[datadict["true_labels"] == 0][labeled_positive_num:]
             for k, v in datadict.items()
         }
         negative_datadict = {

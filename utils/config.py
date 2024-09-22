@@ -6,7 +6,6 @@ from typing import Sequence, Tuple
 class DataConfig:
     env_name: str = "hopper"
     shift: str = "body_mass"  # (body_mass, joint_noise, h_v_w)
-    positive_env: str = "original"  # (original shifted)
     positive_data_quality: str = "medium_expert"
     negative_data_quality: str = "random"
     input_type: str = "sas"  # (sas, sa)
@@ -20,30 +19,11 @@ class DataConfig:
 
 
 @dataclass
-class AWACConfig:
-    # GENERAL
-    batch_size: int = 256
-    n_jitted_updates: int = 8
-    normalize_state: bool = False
-    # NETWORK
-    actor_hidden_dims: Tuple[int, ...] = (256, 256, 256, 256)
-    critic_hidden_dims: Tuple[int, ...] = (256, 256)
-    actor_lr: float = 3e-4
-    critic_lr: float = 3e-4
-    # AWAC SPECIFIC
-    beta: float = 1.0
-    tau: float = 0.003
-    discount: float = 0.99
-
-    def __hash__(self):
-        return hash(self.__repr__())
-
-
-@dataclass
 class IQLConfig:
     # GENERAL
     batch_size: int = 256
     n_jitted_updates: int = 8
+    normalize_reward: bool = True
     normalize_state: bool = False
     # TRAINING
     hidden_dims: Tuple[int, int] = (256, 256)
@@ -56,15 +36,19 @@ class IQLConfig:
     tau: float = 0.005
     discount: float = 0.99
 
+    def __hash__(self):
+        return hash(self.__repr__())
+
 
 @dataclass
 class TD3BCConfig:
     # GENERAL
     batch_size: int = 256
     n_jitted_updates: int = 8
+    normalize_reward: bool = False
     normalize_state: bool = True
     # NETWORK
-    hidden_dims: Sequence[int] = (256, 256)
+    hidden_dims: Tuple[int, int] = (256, 256)
     critic_lr: float = 1e-3
     actor_lr: float = 1e-3
     # TD3-BC SPECIFIC
@@ -83,21 +67,24 @@ class TD3BCConfig:
 class OfflineRLConfig:
     # GENERAL
     project: str = "test-offlinerl"
-    env: str = "hopper"
+    env_name: str = "hopper"
+    eval_env_name: str = "Hopper-v3"
     seed: int = 0
+    n_seeds: int = 2
     # DATA
     data: DataConfig = DataConfig()
     # ALGORITHM
     algorithm: str = "td3bc"
-    awac: AWACConfig = AWACConfig()
     iql: IQLConfig = IQLConfig()
     td3bc: TD3BCConfig = TD3BCConfig()
     # TRAINING
     method: str = "pu"  # (oracle, pu, only_positive, sharing_all, uds, pvu)
     max_steps: int = 1000000
-    eval_interval: int = 10000
+    eval_interval: int = 100000
     eval_episodes: int = 10
     log_interval: int = 1000
+    # classifier specification
+    hidden_dims: Tuple[int, int] = (128, 128)
 
     def __hash__(self):
         return hash(self.__repr__())
@@ -111,7 +98,7 @@ class ClassifierConfig:
     seed: int = 0
     data: DataConfig = DataConfig()
     # NETWORK
-    hidden_dims: Sequence[int] = (16, 16)
+    hidden_dims: Tuple[int, int] = (128, 128)
     lr: float = 1e-3
     wd: float = 5e-4
     # TRAINING

@@ -1,4 +1,4 @@
-# Copied and modified from JAX-CORL: https://github.com/nissymori/WSRLHF/blob/main/reward/offlinerl/td3bc.py
+# source https://github.com/sfujim/TD3_BC
 # https://arxiv.org/abs/2106.06860
 import os
 import time
@@ -15,12 +15,11 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import tqdm
-import wandb
 from flax.training.train_state import TrainState
 from omegaconf import OmegaConf
 from pydantic import BaseModel
 
-from .dataset import Transition
+import wandb
 
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=True"
 
@@ -78,54 +77,18 @@ class TD3Actor(nn.Module):
         return action
 
 
-def get_dataset(
-    env: gym.Env, config: Dict, clip_to_eps: bool = True, eps: float = 1e-5
-) -> Transition:
-    dataset = d4rl.qlearning_dataset(env)
-
-    if clip_to_eps:
-        lim = 1 - eps
-        dataset["actions"] = np.clip(dataset["actions"], -lim, lim)
-
-    imputed_next_observations = np.roll(dataset["observations"], -1, axis=0)
-    same_obs = np.all(
-        np.isclose(imputed_next_observations, dataset["next_observations"], atol=1e-5),
-        axis=-1,
-    )
-    dones = 1.0 - same_obs.astype(np.float32)
-    dones[-1] = 1
-
-    dataset = Transition(
-        observations=jnp.array(dataset["observations"], dtype=jnp.float32),
-        actions=jnp.array(dataset["actions"], dtype=jnp.float32),
-        rewards=jnp.array(dataset["rewards"], dtype=jnp.float32),
-        dones=jnp.array(dones, dtype=jnp.float32),
-        next_observations=jnp.array(dataset["next_observations"], dtype=jnp.float32),
-    )
-    # shuffle data and select the first data_size samples
-    data_size = min(config.data_size, len(dataset.observations))
-    rng = jax.random.PRNGKey(config.seed)
-    rng, rng_permute, rng_select = jax.random.split(rng, 3)
-    perm = jax.random.permutation(rng_permute, len(dataset.observations))
-    dataset = jax.tree_map(lambda x: x[perm], dataset)
-    assert len(dataset.observations) >= data_size
-    dataset = jax.tree_map(lambda x: x[:data_size], dataset)
-    # normalize states
-    obs_mean, obs_std = 0, 1
-    if config.normalize_state:
-        obs_mean = dataset.observations.mean(0)
-        obs_std = dataset.observations.std(0)
-        dataset = dataset._replace(
-            observations=(dataset.observations - obs_mean) / (obs_std + 1e-5),
-            next_observations=(dataset.next_observations - obs_mean) / (obs_std + 1e-5),
-        )
-    return dataset, obs_mean, obs_std
+class Transition(NamedTuple):
+    observations: jnp.ndarray
+    actions: jnp.ndarray
+    rewards: jnp.ndarray
+    next_observations: jnp.ndarray
+    dones: jnp.ndarray
 
 
 def target_update(
     model: TrainState, target_model: TrainState, tau: float
 ) -> TrainState:
-    new_target_params = jax.tree_map(
+    new_target_params = jax.tree_util.tree_map(
         lambda p, tp: p * tau + tp * (1 - tau), model.params, target_model.params
     )
     return target_model.replace(params=new_target_params)
@@ -140,20 +103,29 @@ def update_by_loss_grad(
     return new_train_state, loss
 
 
-class TD3BCTrainer(NamedTuple):
+class TD3BCTrainState(NamedTuple):
     actor: TrainState
     critic: TrainState
     target_actor: TrainState
     target_critic: TrainState
     max_action: float = 1.0
 
+
+class TD3BC(object):
+    @classmethod
     def update_actor(
-        agent, batch: Transition, rng: jax.random.PRNGKey, config: Dict
-    ) -> Tuple["TD3BCTrainer", jnp.ndarray]:
+        self,
+        train_state: TD3BCTrainState,
+        batch: Transition,
+        rng: jax.random.PRNGKey,
+        config,
+    ) -> Tuple["TD3BCTrainState", jnp.ndarray]:
         def actor_loss_fn(actor_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
-            predicted_action = agent.actor.apply_fn(actor_params, batch.observations)
-            critic_params = jax.lax.stop_gradient(agent.critic.params)
-            q_value, _ = agent.critic.apply_fn(
+            predicted_action = train_state.actor.apply_fn(
+                actor_params, batch.observations
+            )
+            critic_params = jax.lax.stop_gradient(train_state.critic.params)
+            q_value, _ = train_state.critic.apply_fn(
                 critic_params, batch.observations, predicted_action
             )
 
@@ -164,34 +136,41 @@ class TD3BCTrainer(NamedTuple):
             loss_actor = -1.0 * q_value.mean() * loss_lambda + bc_loss
             return loss_actor
 
-        new_actor, actor_loss = update_by_loss_grad(agent.actor, actor_loss_fn)
-        return agent._replace(actor=new_actor), actor_loss
+        new_actor, actor_loss = update_by_loss_grad(train_state.actor, actor_loss_fn)
+        return train_state._replace(actor=new_actor), actor_loss
 
+    @classmethod
     def update_critic(
-        agent, batch: Transition, rng: jax.random.PRNGKey, config: Dict
-    ) -> Tuple["TD3BCTrainer", jnp.ndarray]:
+        self,
+        train_state: TD3BCTrainState,
+        batch: Transition,
+        rng: jax.random.PRNGKey,
+        config,
+    ) -> Tuple["TD3BCTrainState", jnp.ndarray]:
         def critic_loss_fn(
             critic_params: flax.core.FrozenDict[str, Any]
         ) -> jnp.ndarray:
-            q_pred_1, q_pred_2 = agent.critic.apply_fn(
+            q_pred_1, q_pred_2 = train_state.critic.apply_fn(
                 critic_params, batch.observations, batch.actions
             )
-            target_next_action = agent.target_actor.apply_fn(
-                agent.target_actor.params, batch.next_observations
+            target_next_action = train_state.target_actor.apply_fn(
+                train_state.target_actor.params, batch.next_observations
             )
             policy_noise = (
                 config.policy_noise_std
-                * agent.max_action
+                * train_state.max_action
                 * jax.random.normal(rng, batch.actions.shape)
             )
             target_next_action = target_next_action + policy_noise.clip(
                 -config.policy_noise_clip, config.policy_noise_clip
             )
             target_next_action = target_next_action.clip(
-                -agent.max_action, agent.max_action
+                -train_state.max_action, train_state.max_action
             )
-            q_next_1, q_next_2 = agent.target_critic.apply_fn(
-                agent.target_critic.params, batch.next_observations, target_next_action
+            q_next_1, q_next_2 = train_state.target_critic.apply_fn(
+                train_state.target_critic.params,
+                batch.next_observations,
+                target_next_action,
             )
             target = batch.rewards[..., None] + config.discount * jnp.minimum(
                 q_next_1, q_next_2
@@ -202,58 +181,89 @@ class TD3BCTrainer(NamedTuple):
             value_loss = (value_loss_1 + value_loss_2).mean()
             return value_loss
 
-        new_critic, critic_loss = update_by_loss_grad(agent.critic, critic_loss_fn)
-        return agent._replace(critic=new_critic), critic_loss
+        new_critic, critic_loss = update_by_loss_grad(
+            train_state.critic, critic_loss_fn
+        )
+        return train_state._replace(critic=new_critic), critic_loss
 
-    @partial(jax.jit, static_argnums=(3,))
-    def update_n_times(
-        agent,
-        data: Transition,
+    @classmethod
+    def train_step(
+        self,
+        train_state: TD3BCTrainState,
+        data,
         rng: jax.random.PRNGKey,
-        config: Dict,
-    ) -> Tuple["TD3BCTrainer", Dict]:
-        for _ in range(
-            config.n_jitted_updates
-        ):  # we can jit for roop for static unroll
-            rng, batch_rng = jax.random.split(rng, 2)
+        config,
+    ) -> TD3BCTrainState:
+        for _ in range(config.policy_freq):
+            rng, batch_rng = jax.random.split(rng)
             batch_idx = jax.random.randint(
                 batch_rng, (config.batch_size,), 0, len(data.observations)
             )
-            batch: Transition = jax.tree_map(lambda x: x[batch_idx], data)
-            rng, critic_rng, actor_rng = jax.random.split(rng, 3)
-            agent, critic_loss = agent.update_critic(batch, critic_rng, config)
-            if _ % config.policy_freq == 0:
-                agent, actor_loss = agent.update_actor(batch, actor_rng, config)
-                new_target_critic = target_update(
-                    agent.critic, agent.target_critic, config.tau
-                )
-                new_target_actor = target_update(
-                    agent.actor, agent.target_actor, config.tau
-                )
-                agent = agent._replace(
-                    target_critic=new_target_critic,
-                    target_actor=new_target_actor,
-                )
-        return agent, {
-            "critic_loss": critic_loss,
-            "actor_loss": actor_loss,
-        }
+            batch = jax.tree_util.tree_map(lambda x: x[batch_idx], data)
 
-    @jax.jit
-    def get_actions(
-        agent,
+            rng, critic_rng = jax.random.split(rng)
+            train_state, critic_loss = self.update_critic(
+                train_state, batch, critic_rng, config
+            )
+
+        rng, actor_rng = jax.random.split(rng)
+        train_state, actor_loss = self.update_actor(
+            train_state, batch, actor_rng, config
+        )
+
+        # update target networks
+        new_target_critic = target_update(
+            train_state.critic, train_state.target_critic, config.tau
+        )
+        new_target_actor = target_update(
+            train_state.actor, train_state.target_actor, config.tau
+        )
+        train_state = train_state._replace(
+            target_critic=new_target_critic,
+            target_actor=new_target_actor,
+        )
+        return train_state, critic_loss, actor_loss
+
+    @classmethod
+    def update_n_times(
+        self,
+        train_state: TD3BCTrainState,
+        data: Transition,
+        rng: jax.random.PRNGKey,
+        config,
+    ) -> Tuple["TD3BCTrainState", Dict]:
+        def loop_fn(carry, _):
+            train_state, rng = carry
+            rng, key = jax.random.split(rng)
+            train_state, critic_loss, actor_loss = self.train_step(
+                train_state, data, key, config
+            )
+            return (train_state, rng), {
+                "critic_loss": critic_loss,
+                "actor_loss": actor_loss,
+            }
+
+        updates = int(config.n_jitted_updates // config.policy_freq)
+        (train_state, _), losses = jax.lax.scan(
+            loop_fn, (train_state, rng), None, length=updates
+        )
+        return train_state, losses
+
+    @classmethod
+    def get_action(
+        self,
+        train_state,
         obs: jnp.ndarray,
         max_action: float = 1.0,  # In D4RL, action is scaled to [-1, 1]
     ) -> jnp.ndarray:
-        action = agent.actor.apply_fn(agent.actor.params, obs)
+        action = train_state.actor.apply_fn(train_state.actor.params, obs)
         action = action.clip(-max_action, max_action)
         return action
 
 
-def create_td3bc_trainer(
-    observations: jnp.ndarray, actions: jnp.ndarray, config: Dict
-) -> TD3BCTrainer:
-    rng = jax.random.PRNGKey(config.seed)
+def create_td3bc_train_state(
+    rng, observations: jnp.ndarray, actions: jnp.ndarray, config
+):
     critic_model = DoubleCritic(
         hidden_dims=config.hidden_dims,
     )
@@ -285,7 +295,7 @@ def create_td3bc_trainer(
         params=actor_model.init(actor_rng, observations),
         tx=optax.adam(config.actor_lr),
     )
-    return TD3BCTrainer(
+    return TD3BCTrainState(
         actor=actor_train_state,
         critic=critic_train_state,
         target_actor=target_actor_train_state,
