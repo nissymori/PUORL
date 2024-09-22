@@ -6,9 +6,10 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from data_utils import make_pos_neg_datadict, shuffle_datadict
 from sklearn.model_selection import train_test_split
 from torch.utils import data
+
+from .data_utils import make_pos_neg_datadict, shuffle_datadict
 
 
 def to_sas(data):
@@ -191,13 +192,13 @@ def make_classification_dataset(
     pn_testdata = PN_data(test_souce_data, test_test_negative_data)
 
     p_traindata, u_traindata = get_PUDataSplits(
-        rl_traindata, pos_size=int(pos_size * 0.8), alpha=alpha, beta=beta
+        pn_traindata, pos_size=int(pos_size * 0.8), alpha=alpha, beta=beta
     )
     p_validdata, u_validdata = get_PUDataSplits(
-        rl_validdata, pos_size=int(pos_size * 0.1), alpha=alpha, beta=beta
+        pn_validdata, pos_size=int(pos_size * 0.1), alpha=alpha, beta=beta
     )
     p_testdata, u_testdata = get_PUDataSplits(
-        rl_testdata, int(pos_size * 0.1), alpha=alpha, beta=beta
+        pn_testdata, int(pos_size * 0.1), alpha=alpha, beta=beta
     )
 
     # Create train dataloader

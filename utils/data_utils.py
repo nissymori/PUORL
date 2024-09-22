@@ -1,6 +1,21 @@
+from typing import Dict, Tuple
+
+import d4rl
 import gym
 import h5py
 import numpy as np
+
+# keys
+KEYS = [
+    "observations",
+    "actions",
+    "rewards",
+    "next_observations",
+    "terminals",
+    "true_labels",
+    "dones_float",
+    "masks",
+]
 
 
 def shuffle_datadict(datadict: Dict) -> Dict:

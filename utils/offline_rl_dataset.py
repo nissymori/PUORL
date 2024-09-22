@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .utils import make_pos_neg_datadict, shuffle_datadict
+from .data_utils import make_pos_neg_datadict, shuffle_datadict
 
 # keys
 KEYS = [

@@ -9,8 +9,8 @@ class DataConfig:
     positive_data_quality: str = "medium_expert"
     negative_data_quality: str = "random"
     input_type: str = "sas"  # (sas, sa)
-    labeled_ratio: float = 0.05
-    positive_ratio: float = 0.7
+    labeled_ratio: float = 0.03
+    positive_ratio: float = 0.3
     size: int = 1000000
     train_ratio: float = 0.8
 

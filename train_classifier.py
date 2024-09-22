@@ -1,6 +1,8 @@
 import os
 import time
 
+import d4rl
+import gym
 import numpy
 import pyrallis
 import torch
@@ -10,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import wandb
-from classifier import rank_inputs, test, train_PvU, train_PU_discard, validate
+from classifier import rank_inputs, test, train_PU_discard, train_PvU, validate
 from utils import (ClassifierConfig, make_classification_dataset,
                    make_classifier, make_classifier_params_path,
                    make_shifted_dataset_path)
@@ -29,13 +31,7 @@ def train(config):
     # paths
     shifted_dataset_path = make_shifted_dataset_path(config)
 
-    sas_param_path, sa_net_param_path = make_classifier_params_path(config)
-    if config.data.input_type == "sas":
-        param_path = sas_param_path
-    elif config.data.input_type == "sa":
-        param_path = sa_net_param_path
-    else:
-        raise ValueError("input_type must be sas or sa")
+    param_path = make_classifier_params_path(config)
 
     if not os.path.exists(param_path):
         os.makedirs(os.path.dirname(param_path), exist_ok=True)
@@ -57,7 +53,7 @@ def train(config):
         u_testloader,
     ) = make_classification_dataset(
         shifted_dataset_path,
-        positive_env,
+        positive_data_env,
         device,
         alpha,
         beta,
