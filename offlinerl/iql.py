@@ -15,10 +15,11 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import tqdm
-import wandb
 from flax.training.train_state import TrainState
 from omegaconf import OmegaConf
 from pydantic import BaseModel
+
+import wandb
 
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=True"
 
@@ -143,7 +144,7 @@ class IQLTrainState(NamedTuple):
 
 
 class IQL(object):
-
+    @classmethod
     def update_critic(
         self, train_state: IQLTrainState, batch: Transition, config
     ) -> Tuple["IQLTrainState", Dict]:
@@ -165,6 +166,7 @@ class IQL(object):
         )
         return train_state._replace(critic=new_critic), critic_loss
 
+    @classmethod
     def update_value(
         self, train_state: IQLTrainState, batch: Transition, config
     ) -> Tuple["IQLTrainState", Dict]:
@@ -180,6 +182,7 @@ class IQL(object):
         new_value, value_loss = update_by_loss_grad(train_state.value, value_loss_fn)
         return train_state._replace(value=new_value), value_loss
 
+    @classmethod
     def update_actor(
         self, train_state: IQLTrainState, batch: Transition, config
     ) -> Tuple["IQLTrainState", Dict]:

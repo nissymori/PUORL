@@ -1,3 +1,5 @@
+from typing import Dict, Tuple
+
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -6,7 +8,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from torch.utils import data
-from typing import Dict, Tuple
+
 
 def shuffle_datadict(datadict: Dict) -> Dict:
     """

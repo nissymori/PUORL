@@ -80,7 +80,7 @@ class OfflineRLConfig:
     # TRAINING
     method: str = "pu"  # (oracle, pu, only_positive, sharing_all, uds, pvu)
     max_steps: int = 1000000
-    eval_interval: int = 10000
+    eval_interval: int = 100000
     eval_episodes: int = 10
     log_interval: int = 1000
     # classifier specification

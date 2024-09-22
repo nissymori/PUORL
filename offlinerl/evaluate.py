@@ -1,11 +1,12 @@
-from typing import Tuple
+from typing import Callable, Dict, Tuple
 
 import d4rl
 import gym
 import jax
 import jax.numpy as jnp
 import numpy as np
-from typing import Dict, Callable
+from einops import einops
+
 
 def make_evaluation(
     env,
@@ -15,7 +16,6 @@ def make_evaluation(
     actor_fn: Callable,
     vectorized: bool = True,
 ) -> Callable:
-    t = TqdmUpTo(total=config.max_steps, desc="Training", leave=True)
     actor_vj = jax.jit(jax.vmap(actor_fn))
     actor_j = jax.jit(actor_fn)
     n_seeds = config.n_seeds

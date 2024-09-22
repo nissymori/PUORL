@@ -15,10 +15,11 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import tqdm
-import wandb
 from flax.training.train_state import TrainState
 from omegaconf import OmegaConf
 from pydantic import BaseModel
+
+import wandb
 
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=True"
 
@@ -111,7 +112,7 @@ class TD3BCTrainState(NamedTuple):
 
 
 class TD3BC(object):
-
+    @classmethod
     def update_actor(
         self,
         train_state: TD3BCTrainState,
@@ -138,6 +139,7 @@ class TD3BC(object):
         new_actor, actor_loss = update_by_loss_grad(train_state.actor, actor_loss_fn)
         return train_state._replace(actor=new_actor), actor_loss
 
+    @classmethod
     def update_critic(
         self,
         train_state: TD3BCTrainState,
@@ -203,7 +205,6 @@ class TD3BC(object):
             train_state, critic_loss = self.update_critic(
                 train_state, batch, critic_rng, config
             )
-            train_state = train_state._replace(global_step=train_state.global_step + 1)
 
         rng, actor_rng = jax.random.split(rng)
         train_state, actor_loss = self.update_actor(
@@ -242,8 +243,9 @@ class TD3BC(object):
                 "actor_loss": actor_loss,
             }
 
+        updates = int(config.n_jitted_updates // config.policy_freq)
         (train_state, _), losses = jax.lax.scan(
-            loop_fn, (train_state, rng), None, length=config.n_jitted_updates
+            loop_fn, (train_state, rng), None, length=updates
         )
         return train_state, losses
 

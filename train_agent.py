@@ -2,27 +2,21 @@ import os
 import pickle
 from typing import List, Literal
 
+import envpool
 import gym
-import pyrallis
 import h5py
+import jax
+import jax.numpy as jnp
 import numpy as np
 import pyrallis
 import torch
-import jax
-import jax.numpy as jnp
-import envpool
 from tqdm import tqdm
 
 import wandb
-from utils import (
-    make_classifier_params_path,
-    make_agent_params_path,
-    make_shifted_dataset_path,
-    make_offline_rl_dataset,
-    OfflineRLConfig,
-    make_classifier,
-)
 from offlinerl import make_agent, make_evaluation
+from utils import (OfflineRLConfig, make_agent_params_path, make_classifier,
+                   make_classifier_params_path, make_offline_rl_dataset,
+                   make_shifted_dataset_path)
 
 """
 Dataset
@@ -55,6 +49,7 @@ We train the rl agent with the dataset augmented with predicted label by pu clas
 To understand more about experimental setting, please refer to utils/config.py and experimental_setup_utils.py
 """
 
+
 @pyrallis.wrap()
 def main_pyrallis(config: OfflineRLConfig):
     train(config)
@@ -76,22 +71,32 @@ def train(config: OfflineRLConfig):
     # load classifier if necessary
     sas_net_param_path = make_classifier_params_path(config)
     print(sas_net_param_path)
-    sas_net = make_classifier(config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0])
+    sas_net = make_classifier(
+        config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0]
+    )
     # load classifier if method is pu
     sas_net = (
         sas_net.load_state_dict(torch.load(sas_net_param_path))
-        if config.method == "pu"
-        or config.method == "pvu"
+        if config.method == "pu" or config.method == "pvu"
         else None
+    )
+
+    # make agent
+    algo, create_train_state, algo_config = make_agent(config)
+    train_vj = jax.jit(
+        jax.vmap(algo.update_n_times, in_axes=(0, None, 0, None)), static_argnums=(3,)
     )
 
     # make dataset
     shifted_dataset_path = make_shifted_dataset_path(config)
-    dataset, obs_mean, obs_std = make_offline_rl_dataset(shifted_dataset_path, positive_env, config, sas_net)
-
-    # make agent
-    algo, create_train_state, algo_config = make_agent(config)
-    train_vj = jax.jit(jax.vmap(algo.update_n_times, in_axes=(0, None, 0, None)))
+    dataset, obs_mean, obs_std = make_offline_rl_dataset(
+        shifted_dataset_path,
+        positive_data_env,
+        config,
+        sas_net,
+        algo_config.normalize_state,
+        algo_config.normalize_reward,
+    )
 
     # make evaluation function
     eval_fn = make_evaluation(
@@ -108,11 +113,13 @@ def train(config: OfflineRLConfig):
     rng, subkey = jax.random.split(rng)
     rngs = jax.random.split(subkey, config.n_seeds)
     example_batch = jax.tree_util.tree_map(lambda x: x[0], dataset)
-    train_state = jax.vmap(create_train_state, in_axes=(0, None, None, None))(rngs, example_batch.observation, example_batch.action, algo_config)
+    train_state = jax.vmap(create_train_state, in_axes=(0, None, None, None))(
+        rngs, example_batch.observations, example_batch.actions, algo_config
+    )
 
     # train
-    num_steps = int(config.max_steps//config.n_jitted_updates)
-    eval_interval = int(config.eval_interval//config.n_jitted_updates)
+    num_steps = int(config.max_steps // algo_config.n_jitted_updates)
+    eval_interval = int(config.eval_interval // algo_config.n_jitted_updates)
     for step in tqdm(range(num_steps)):
         rng, subkey = jax.random.split(rng)
         rngs = jax.random.split(subkey, config.n_seeds)
@@ -125,7 +132,3 @@ def train(config: OfflineRLConfig):
 
 if __name__ == "__main__":
     main_pyrallis()
-
-
-
-    
