@@ -135,13 +135,19 @@ def get_PUDataSplits(data_obj, pos_size, alpha, beta, data_type=None):
 
 
 def make_classifier(hidden_dims: Tuple[int], input_dim=None):
-    net = nn.Sequential()
-    net.add_module("input", nn.Linear(input_dim, hidden_dims[0]))
-    net.add_module("input_relu", nn.ReLU())
-    for i in range(1, len(hidden_dims)):
-        net.add_module(f"fc{i}", nn.Linear(hidden_dims[i - 1], hidden_dims[i]))
-        net.add_module(f"relu{i}", nn.ReLU())
-    net.add_module("output", nn.Linear(hidden_dims[-1], 2))
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = nn.Linear(input_dim, hidden_dims[0])
+            self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
+            self.fc3 = nn.Linear(hidden_dims[1], 2)
+
+        def forward(self, x):
+            x = F.relu(self.fc1(x))
+            x = F.relu(self.fc2(x))
+            x = self.fc3(x)
+            return x
+    net = Net()
     return net
 
 

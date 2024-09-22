@@ -43,8 +43,8 @@ def train(config):
     negative_num = int(config.data.size * (1 - config.data.positive_ratio))
     unlabeled_num = int(config.data.size * (1 - config.data.labeled_ratio))
 
-    alpha = (unlabeled_num - negative_num) / unlabeled_num
-    beta = (positive_num + negative_num - unlabeled_num) / (positive_num + negative_num)
+    alpha = (unlabeled_num - negative_num) / unlabeled_num  # positive data in unlabeled
+    beta = (positive_num + negative_num - unlabeled_num) / (positive_num + negative_num)  # labeled data ratio
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     (
@@ -65,7 +65,7 @@ def train(config):
     )
 
     input_dim = p_trainloader.dataset.data.shape[-1]
-    net = make_classifier(config.hidden_dims, input_dim=input_dim)
+    net = make_classifier(config.hidden_dims, input_dim=input_dim).to(device)
 
     assert p_trainloader.dataset.__len__() <= u_trainloader.dataset.__len__()
     assert p_validloader.dataset.__len__() <= u_validloader.dataset.__len__()

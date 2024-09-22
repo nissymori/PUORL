@@ -36,7 +36,7 @@ def make_shifted_dataset_path(config):
         joint_dataset_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "dataset",
-            f"{config.env_name}/{body_mass}/{config.data.positive_data_quality}.hdf5",
+            f"{config.env_name}/joint_noise/{config.data.positive_data_quality}.hdf5",
         )
         assert os.path.exists(body_mass_dataset_path)
         assert os.path.exists(joint_dataset_path)
