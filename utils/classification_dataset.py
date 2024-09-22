@@ -6,22 +6,9 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from data_utils import make_pos_neg_datadict, shuffle_datadict
 from sklearn.model_selection import train_test_split
 from torch.utils import data
-
-
-def shuffle_datadict(datadict: Dict) -> Dict:
-    """
-    shuffle datadict
-    :datadict: datadict
-    :return: shuffled datadict
-    """
-    indices = np.arange(len(datadict["observations"]))
-    np.random.shuffle(indices)
-    shuffled_datadict = {
-        k: np.array(v)[indices] for k, v in datadict.items() if k in KEYS
-    }
-    return shuffled_datadict
 
 
 def to_sas(data):
@@ -159,6 +146,7 @@ def make_classifier(hidden_dims: Tuple[int], input_dim=None):
 
 def make_classification_dataset(
     shifted_dataset_path: str,
+    positive_env: str,
     device: str,
     alpha: float,
     beta: float,
@@ -169,21 +157,9 @@ def make_classification_dataset(
     import gym
     import h5py
 
-    if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        positive_env = gym.make(
-            f"{config.env_name.lower()}-{config.data.positive_data_quality.replace('_', '-')}-v2"
-        )
-        positive_datadict = d4rl.qlearning_dataset(positive_env)
-        negative_datadict = h5py.File(shifted_dataset_path, "r")
-    elif config.data.shift == "halfcheetah_vs_walker2d":
-        positive_env = gym.make(
-            f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
-        )
-        negative_env = gym.make(
-            f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
-        )
-        positive_datadict = d4rl.qlearning_dataset(positive_env)
-        negative_datadict = d4rl.qlearning_dataset(negative_env)
+    positive_datadict, negative_datadict = make_pos_neg_datadict(
+        shifted_dataset_path, positive_env, config
+    )
     positive_datadict = shuffle_datadict(positive_datadict)
     negative_datadict = shuffle_datadict(negative_datadict)
 

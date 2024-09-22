@@ -51,7 +51,7 @@ To understand more about experimental setting, please refer to utils/config.py a
 
 
 @pyrallis.wrap()
-def main_pyrallis(config: OfflineRLConfig):
+def main(config: OfflineRLConfig):
     train(config)
 
 
@@ -131,4 +131,4 @@ def train(config: OfflineRLConfig):
 
 
 if __name__ == "__main__":
-    main_pyrallis()
+    main()

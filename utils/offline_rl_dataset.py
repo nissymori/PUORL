@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .config import OfflineRLConfig
+from .utils import make_pos_neg_datadict, shuffle_datadict
 
 # keys
 KEYS = [
@@ -35,7 +35,7 @@ class Transition(NamedTuple):
 
 def get_transitions(
     dataset,
-    config: OfflineRLConfig,
+    config,
     clip_to_eps: bool = True,
     eps: float = 1e-5,
     normalize_state: bool = False,
@@ -97,42 +97,10 @@ def get_normalization(dataset: Transition) -> float:
     return (max(returns) - min(returns)) / 1000
 
 
-def make_pos_neg_datadict(
-    shifted_dataset_path, positive_env: gym.Env, config: OfflineRLConfig
-) -> Tuple[Dict, Dict]:
-    """
-    There are three types of shift:
-    1. body_mass: body mass of the agent is changed.
-    2. joint_noise: joint noise is added to the agent.
-    3. halfcheetah_vs_walker2d: halfcheetah is trained and walker2d is test.
-
-    For each shift, we can consider two types of correspondings between positive and negative data:
-    1. shifted=positive, original=negative
-    2. shifted=negative, original=positive
-
-    Finally, we consider the data quality for each domain, e.g. positive_data_quality = "expert", negative_data_quality = "random"
-    """
-    if config.data.shift == "body_mass" or config.data.shift == "joint_noise":
-        positive_datadict = d4rl.qlearning_dataset(env=positive_env)
-        negative_datadict = h5py.File(shifted_dataset_path, "r")
-    elif config.data.shift == "halfcheetah_vs_walker2d":
-        positive_env = gym.make(
-            f"halfcheetah-{config.data.positive_data_quality.replace('_', '-')}-v2"
-        )
-        negative_env = gym.make(
-            f"walker2d-{config.data.negative_data_quality.replace('_', '-')}-v2"
-        )
-        positive_datadict = d4rl.qlearning_dataset(env=positive_env)
-        negative_datadict = d4rl.qlearning_dataset(env=negative_env)
-    else:
-        raise NotImplementedError
-    return positive_datadict, negative_datadict
-
-
 def make_offline_rl_dataset(
     shifted_dataset_path: str,
     positive_env: gym.Env,
-    config: OfflineRLConfig,
+    config,
     sas_net: nn.Module = None,
     normalize_state: bool = False,
     normalize_reward: bool = False,

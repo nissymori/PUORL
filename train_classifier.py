@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import wandb
-from classifier import rank_inputs, test, train, train_PU_discard, validate
+from classifier import rank_inputs, test, train_PvU, train_PU_discard, validate
 from utils import (ClassifierConfig, make_classification_dataset,
                    make_classifier, make_classifier_params_path,
                    make_shifted_dataset_path)
@@ -23,7 +23,9 @@ def main(config: ClassifierConfig):
 
 def train(config):
     wandb.init(project=f"train-" + config.project, config=config)
-
+    positive_data_env = gym.make(
+        f"{config.env_name}-{config.data.positive_data_quality.replace('_', '-')}-v2"
+    )
     # paths
     shifted_dataset_path = make_shifted_dataset_path(config)
 
@@ -55,6 +57,7 @@ def train(config):
         u_testloader,
     ) = make_classification_dataset(
         shifted_dataset_path,
+        positive_env,
         device,
         alpha,
         beta,
@@ -171,7 +174,7 @@ def train(config):
             wandb.log(log)
     elif config.method == "pvu":  # train classifier with policy and value
         for epoch in range(config.epochs):
-            train_acc = train(
+            train_acc = train_PvU(
                 epoch,
                 net,
                 p_trainloader,
