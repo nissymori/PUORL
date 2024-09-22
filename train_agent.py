@@ -3,6 +3,7 @@ import pickle
 from typing import List, Literal
 
 import gym
+import pyrallis
 import h5py
 import numpy as np
 import pyrallis
@@ -54,7 +55,7 @@ We train the rl agent with the dataset augmented with predicted label by pu clas
 To understand more about experimental setting, please refer to utils/config.py and experimental_setup_utils.py
 """
 
-
+@pyrallis.wrap()
 def train(config: OfflineRLConfig):
     wandb.init(project=config.project, config=config)
     # make positive (data) environment
@@ -116,6 +117,10 @@ def train(config: OfflineRLConfig):
             eval_return = eval_fn(train_state)
             wandb.log({"eval_return": eval_return, "step": step})
             print(f"step: {step}, eval_return: {eval_return}")
+
+
+if __name__ == "__main__":
+    train(config)
 
 
 
