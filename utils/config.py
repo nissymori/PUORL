@@ -98,12 +98,12 @@ class ClassifierConfig:
     seed: int = 0
     data: DataConfig = DataConfig()
     # NETWORK
-    hidden_dims: Tuple[int, int] = (64, 64)
+    hidden_dims: Tuple[int, int] = (256, 256)
     lr: float = 1e-3
     wd: float = 5e-4
     # TRAINING
     warm_start_epochs: int = 10
-    epochs: int = 20
+    epochs: int = 1000
     batch_size: int = 256
     # method
     method: str = "pu"  # (pu, pvu)
