@@ -87,12 +87,23 @@ def make_classifier_params_path(config):
     7. labeled_ratio: labeled data ratio
     8. seed
     """
+    if config.method == "dara-pvu":
+        method = "pvu"
+    elif config.method == "dara-pu":
+        method = "pu"
+    else:
+        method = config.method
     data_quality = (
         f"{config.data.positive_data_quality}_vs_{config.data.negative_data_quality}"
     )
-    param_path = os.path.join(
+    sas_params = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "params/classifier",
-        f"{config.method}/{config.env_name}/{config.data.shift}/{data_quality}/{config.data.input_type}/model_positive_ratio={config.data.positive_ratio}_labeled_ratio={config.data.labeled_ratio}.pt",
+        f"{method}/{config.env_name}/{config.data.shift}/{data_quality}/sas/model_positive_ratio={config.data.positive_ratio}_labeled_ratio={config.data.labeled_ratio}.pt",
     )
-    return param_path
+    sa_params = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "params/classifier",
+        f"{method}/{config.env_name}/{config.data.shift}/{data_quality}/sa/model_positive_ratio={config.data.positive_ratio}_labeled_ratio={config.data.labeled_ratio}.pt",
+    )
+    return sas_params, sa_params
