@@ -85,6 +85,7 @@ class OfflineRLConfig:
     log_interval: int = 1000
     # classifier specification
     hidden_dims: Tuple[int, int] = (128, 128)
+    classifier_hidden_dims: Tuple[int, int] = (256, 256)
 
     def __hash__(self):
         return hash(self.__repr__())

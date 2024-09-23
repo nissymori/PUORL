@@ -75,22 +75,26 @@ def train(config: OfflineRLConfig):
     sas_net_param_path, sa_net_param_path = make_classifier_params_path(config)
     print(sas_net_param_path)
     sas_net = make_classifier(
-        config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0] * 2 + positive_data_env.action_space.shape[0]
+        config.classifier_hidden_dims, input_dim=positive_data_env.observation_space.shape[0] * 2 + positive_data_env.action_space.shape[0]
     )
     sa_net = make_classifier(
-        config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0] + positive_data_env.action_space.shape[0]
+        config.classifier_hidden_dims, input_dim=positive_data_env.observation_space.shape[0] + positive_data_env.action_space.shape[0]
     )
+    print(sas_net.state_dict().keys())
     # load classifier if method is pu
-    sas_net = (
-        sas_net.load_state_dict(torch.load(sas_net_param_path))
-        if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu"
-        else None
-    )
-    sa_net = (
-        sa_net.load_state_dict(torch.load(sa_net_param_path))
-        if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu"
-        else None
-    )
+    sas_net_param = torch.load(sas_net_param_path)
+    sa_net_param = torch.load(sa_net_param_path)
+    # remove module
+    from collections import OrderedDict
+    new_sas_net_param = OrderedDict()
+    new_sa_net_param = OrderedDict()
+    for key, value in sas_net_param.items():
+        new_sas_net_param[key[7:]] = value
+    for key, value in sa_net_param.items():
+        new_sa_net_param[key[7:]] = value
+    if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu":
+        sas_net.load_state_dict(new_sas_net_param)
+        sa_net.load_state_dict(new_sa_net_param)
 
     # make agent
     algo, create_train_state, algo_config = make_agent(config)

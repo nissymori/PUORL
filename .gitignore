@@ -10,7 +10,7 @@ augmented_dataset_PvU
 d3rlpy_logs
 D4RL
 fig
-
+MUJOCO_LOG.TXT
 
 # C extensions
 *.so
