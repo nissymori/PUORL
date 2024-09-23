@@ -141,6 +141,9 @@ def make_offline_rl_dataset(
         datadict = filtering_by_label(
             datadict, target, sas_net, config
         )  # filter positive
+    
+    if config.method == "dara-pu" or config.method == "dara-pvu":
+        datadict = augment_by_dara(datadict, sas_net, sa_net, config)
 
     dataset, obs_mean, obs_std = get_transitions(
         datadict,

@@ -83,12 +83,12 @@ def train(config: OfflineRLConfig):
     # load classifier if method is pu
     sas_net = (
         sas_net.load_state_dict(torch.load(sas_net_param_path))
-        if config.method == "pu" or config.method == "pvu"
+        if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu"
         else None
     )
     sa_net = (
         sa_net.load_state_dict(torch.load(sa_net_param_path))
-        if config.method == "pu" or config.method == "pvu"
+        if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu"
         else None
     )
 
