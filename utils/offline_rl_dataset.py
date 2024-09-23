@@ -102,6 +102,7 @@ def make_offline_rl_dataset(
     positive_env: gym.Env,
     config,
     sas_net: nn.Module = None,
+    sa_net: nn.Module = None,
     normalize_state: bool = False,
     normalize_reward: bool = False,
 ) -> Transition:
@@ -241,7 +242,7 @@ def filtering_by_label(
         positive_indices = np.where(datadict["true_labels"] == 0)[0]
         negative_indices = np.where(datadict["true_labels"] == 1)[0]
         labeled_positive_num = int(
-            (len(positive_indices) + len(negative_indices)) * config.data.positive_ratio
+            (len(positive_indices) + len(negative_indices)) * config.data.labeled_ratio
         )
         # separate positive data into labeled and unlabeled
         positively_labeled_datadict = {
@@ -301,3 +302,92 @@ def filtering_by_label(
     else:
         raise NotImplementedError
     return filtered_datadict
+
+
+def augment_by_dara(datadict, sas_net, sa_net, config):
+    """ """
+    positive_indices = np.where(datadict["true_labels"] == 0)[0]
+    negative_indices = np.where(datadict["true_labels"] == 1)[0]
+    positive_labeled_num = int(
+        (len(positive_indices) + len(negative_indices))
+        * config.data.labeled_ratio
+    )
+    # separate positive data into labeled and unlabeled
+    positively_labeled_datadict = {
+        k: v[datadict["true_labels"] == 0][:positive_labeled_num]
+        for k, v in datadict.items()
+    }
+    rest_positive_datadict = {
+        k: v[datadict["true_labels"] == 0][positive_labeled_num:]
+        for k, v in datadict.items()
+    }
+    negative_datadict = {
+        k: v[datadict["true_labels"] == 1] for k, v in datadict.items()
+    }
+    unlabeled_data = concatenate_datadict(
+        rest_positive_datadict,
+        negative_datadict,
+        len(rest_positive_datadict["observations"]),
+        len(negative_indices),
+        add_true_labels=False,
+    )  # filter from unlabeled data.
+    # apply dara with unlabeled data as source and positively labeled data as target
+    modified_unlabeled_data = dara(
+        unlabeled_data, sas_net, sa_net, source_idx=1, target_idx=0
+    )
+    augmented_datadict = concatenate_datadict(
+        positively_labeled_datadict,
+        modified_unlabeled_data,
+        positive_labeled_num,
+        len(modified_unlabeled_data["observations"]),
+        add_true_labels=False,
+    )
+    # shuffle
+    augmented_datadict = shuffle_datadict(augmented_datadict)
+    assert len(augmented_datadict["observations"]) == len(datadict["observations"])
+    return augmented_datadict
+
+
+def dara(source_datadict, sas_net, sa_net, source_idx, target_idx, eta=0.1):
+    """
+    DARA augmentation
+    we augment source data towards target data by DARA
+    """
+    sas_net.eval()
+    sa_net.eval()
+
+    states = np.array(source_datadict["observations"])
+    actions = np.array(source_datadict["actions"])
+    next_states = np.array(source_datadict["next_observations"])
+    rewards = np.array(source_datadict["rewards"])
+
+    source_sas_data = np.concatenate(
+        (states, actions, next_states), axis=1
+    )  # (B, data_dim)
+    source_sas_data = torch.from_numpy(source_sas_data).float()  # (B, data_dim)
+
+    source_sa_data = np.concatenate((states, actions), axis=1)  # (B, data_dim)
+    source_sa_data = torch.from_numpy(source_sa_data).float()  # (B, data_dim)
+    print(source_sas_data.shape, source_sa_data.shape)
+
+    sas_logits = sas_net(source_sas_data)  # (B, 2)
+    sas_probs = F.softmax(sas_logits, dim=-1)  # (B, 2)
+
+    sa_logits = sa_net(source_sa_data)  # (B, 2)
+    sa_probs = F.softmax(sa_logits, dim=-1)  # (B, 2)
+
+    delta = torch.log(sas_probs[:, source_idx] / sas_probs[:, target_idx]) - torch.log(
+        sa_probs[:, source_idx] / sa_probs[:, target_idx]
+    ).to(
+        torch.float32
+    )  # (B,)
+
+    assert delta.shape[0] == len(rewards)
+    print(type(rewards.astype(np.float32)))
+    rewards = rewards.reshape(rewards.shape[0], 1)  # (B, 1)  for medium-replay
+
+    new_rewards = (
+        rewards.astype(np.float32)[:, 0] - eta * delta.detach().cpu().numpy().squeeze()
+    )  # (B,)
+    source_datadict["rewards"] = new_rewards
+    return source_datadict

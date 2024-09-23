@@ -72,14 +72,22 @@ def train(config: OfflineRLConfig):
     )
 
     # load classifier if necessary
-    sas_net_param_path = make_classifier_params_path(config)
+    sas_net_param_path, sa_net_param_path = make_classifier_params_path(config)
     print(sas_net_param_path)
     sas_net = make_classifier(
-        config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0]
+        config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0] * 2 + positive_data_env.action_space.shape[0]
+    )
+    sa_net = make_classifier(
+        config.hidden_dims, input_dim=positive_data_env.observation_space.shape[0] + positive_data_env.action_space.shape[0]
     )
     # load classifier if method is pu
     sas_net = (
         sas_net.load_state_dict(torch.load(sas_net_param_path))
+        if config.method == "pu" or config.method == "pvu"
+        else None
+    )
+    sa_net = (
+        sa_net.load_state_dict(torch.load(sa_net_param_path))
         if config.method == "pu" or config.method == "pvu"
         else None
     )
@@ -97,6 +105,7 @@ def train(config: OfflineRLConfig):
         positive_data_env,
         config,
         sas_net,
+        sa_net,
         algo_config.normalize_state,
         algo_config.normalize_reward,
     )

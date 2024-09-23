@@ -34,10 +34,13 @@ def train(config):
     # paths
     shifted_dataset_path = make_shifted_dataset_path(config)
 
-    param_path = make_classifier_params_path(config)
+    sas_param_path, sa_params = make_classifier_params_path(config)
 
     if not os.path.exists(param_path):
         os.makedirs(os.path.dirname(param_path), exist_ok=True)
+    if not os.path.exists(sa_params):
+        os.makedirs(os.path.dirname(sa_params), exist_ok=True)
+    param_path = sas_param_path if config.input_type == "sas" else sa_params
 
     positive_num = int(config.data.size * config.data.positive_ratio)
     negative_num = int(config.data.size * (1 - config.data.positive_ratio))
