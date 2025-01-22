@@ -28,7 +28,7 @@ for shift in "halfcheetah_vs_walker2d"; do
                         --data.negative_data_quality=$negative_data_quality \
                         --data.positive_ratio=$positive_ratio \
                         --data.labeled_ratio=$labeled_ratio \
-                        --method=$method
+                        --method=$method \
                         --n_seeds=$n_seeds \
                         --seed=$seed
                     done
@@ -48,7 +48,7 @@ for shift in "halfcheetah_vs_walker2d"; do
                 --eval_env_name=$eval_env_name \
                 --data.positive_data_quality=$positive_data_quality \
                 --data.positive_ratio=$positive_ratio \
-                --method=$method
+                --method=$method \
                 --n_seeds=$n_seeds \
                 --seed=$seed
             done
