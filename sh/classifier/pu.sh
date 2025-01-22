@@ -1,6 +1,8 @@
 seed=0
 project="puorl_classification"
 
+cd ../..
+
 ########################################################
 # Body Mass Shift
 ########################################################
@@ -17,7 +19,7 @@ for shift_type in "body_mass"; do
                 for positive_ratio in 0.3; do
                     for labeled_ratio in 0.01 0.03; do
                         for method in "pu"; do
-                            python train_agent.py --shift_type=$shift_type \\
+                            python train_classifier.py --shift_type=$shift_type \\
                             --env_name=$env_name \\
                             --data.positive_data_quality=$positive_data_quality \\
                             --data.negative_data_quality=$negative_data_quality \\
@@ -48,7 +50,7 @@ for shift_type in "halfcheetah_vs_walker2d"; do
             for positive_ratio in 0.3; do
                 for labeled_ratio in 0.01 0.03; do
                     for method in "pu"; do
-                        python train_agent.py --shift_type=$shift_type \\
+                        python train_classifier.py --shift_type=$shift_type \\
                         --env_name=$env_name \\
                         --data.positive_data_quality=$positive_data_quality \\
                         --data.negative_data_quality=$negative_data_quality \\
