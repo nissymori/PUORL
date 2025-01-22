@@ -4,7 +4,6 @@ seed: 0
 method: pu
 
 data:
-  env_name: hopper
   shift: body_mass
   positive_data_quality: medium_expert
   negative_data_quality: medium_expert

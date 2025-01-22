@@ -4,7 +4,6 @@ from typing import Sequence, Tuple
 
 @dataclass
 class DataConfig:
-    env_name: str = "hopper"
     shift: str = "body_mass"  # (body_mass, joint_noise, h_v_w)
     positive_data_quality: str = "medium_expert"
     negative_data_quality: str = "random"
@@ -104,7 +103,7 @@ class ClassifierConfig:
     wd: float = 5e-4
     # TRAINING
     warm_start_epochs: int = 10
-    epochs: int = 1000
+    epochs: int = 100
     batch_size: int = 256
     # method
     method: str = "pu"  # (pu, pvu)
