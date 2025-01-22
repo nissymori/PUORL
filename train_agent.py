@@ -32,12 +32,11 @@ Method
 - pvu: augment the observation with predicted label by pvu classifier (pvu means p vs u as negative)
 - oracle: augment the observation with true label
 - sharing_all: use all data
-- only_positive: use only positive data
+- only_p: use only positive data
 - uds: use only unlabeled data
 
 As an example, we consider the following setting:
-- shift_type: body_mass
-- positive_env: shifted
+- shift: body_mass
 - positive_data_quality: expert
 - negative_data_quality: random
 - positive_ratio: 0.3
