@@ -27,11 +27,13 @@ Dataset
 - Such parameter is determined by config file at utils/config.py
 
 Method
-- We have three types of train: pu, pvu, oracle, sharing_all, uds, only_psitive
+- We have 6 types of train: pu, pvu, oracle, sharing_all, uds, only_psitive
 - pu: augment the observation with predicted label by pu classifier
 - pvu: augment the observation with predicted label by pvu classifier (pvu means p vs u as negative)
-- ground_true: augment the observation with true label
-
+- oracle: augment the observation with true label
+- sharing_all: use all data
+- only_positive: use only positive data
+- uds: use only unlabeled data
 
 As an example, we consider the following setting:
 - shift_type: body_mass
@@ -57,9 +59,8 @@ def main(config: OfflineRLConfig):
 
 def train(config: OfflineRLConfig):
     print(
-        f"Start classifier training {config.env_name}, shift: {config.data.shift}, method: {config.method}, positive data quality: {config.data.positive_data_quality}, negative data quality: {config.data.negative_data_quality}"
+        f"Start RL training {config.env_name}, shift: {config.data.shift}, method: {config.method}, positive data quality: {config.data.positive_data_quality}, negative data quality: {config.data.negative_data_quality}, positive ratio: {config.data.positive_ratio}, labeled ratio: {config.data.labeled_ratio}"
     )
-    wandb.init(project=config.project, config=config)
     # make positive (data) environment
     positive_data_env = gym.make(
         f"{config.env_name}-{config.data.positive_data_quality.replace('_', '-')}-v2"
@@ -81,18 +82,20 @@ def train(config: OfflineRLConfig):
         config.classifier_hidden_dims, input_dim=positive_data_env.observation_space.shape[0] + positive_data_env.action_space.shape[0]
     )
     print(sas_net.state_dict().keys())
-    # load classifier if method is pu
-    sas_net_param = torch.load(sas_net_param_path)
-    sa_net_param = torch.load(sa_net_param_path)
-    # remove module
-    from collections import OrderedDict
-    new_sas_net_param = OrderedDict()
-    new_sa_net_param = OrderedDict()
-    for key, value in sas_net_param.items():
-        new_sas_net_param[key[7:]] = value
-    for key, value in sa_net_param.items():
-        new_sa_net_param[key[7:]] = value
+
     if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu":
+        # load classifier if method is pu
+        sas_net_param = torch.load(sas_net_param_path)
+        sa_net_param = torch.load(sa_net_param_path)
+        # remove module
+        from collections import OrderedDict
+        new_sas_net_param = OrderedDict()
+        new_sa_net_param = OrderedDict()
+        for key, value in sas_net_param.items():
+            new_sas_net_param[key[7:]] = value
+        for key, value in sa_net_param.items():
+            new_sa_net_param[key[7:]] = value
+
         sas_net.load_state_dict(new_sas_net_param)
         sa_net.load_state_dict(new_sa_net_param)
 
@@ -136,14 +139,22 @@ def train(config: OfflineRLConfig):
     # train
     num_steps = int(config.max_steps // algo_config.n_jitted_updates)
     eval_interval = int(config.eval_interval // algo_config.n_jitted_updates)
+    eval_returns = []
     for step in tqdm(range(num_steps)):
         rng, subkey = jax.random.split(rng)
         rngs = jax.random.split(subkey, config.n_seeds)
         train_state, loss = train_vj(train_state, dataset, rngs, algo_config)
         if step % eval_interval == 0:
             eval_return = eval_fn(train_state)
-            wandb.log({"eval_return": eval_return, "step": step})
+            eval_returns.append(eval_return)
             print(f"step: {step}, eval_return: {eval_return}")
+    
+    for seed in range(config.n_seeds):
+        wandb.init(project=config.project, config=config, name=f"seed_{seed}", reinit=True)
+        for step in range(len(eval_returns)):
+            wandb.log({"eval_return": eval_returns[step][seed], "step": step * algo_config.n_jitted_updates * config.eval_interval})
+
+
 
 
 if __name__ == "__main__":

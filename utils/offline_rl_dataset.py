@@ -31,6 +31,7 @@ class Transition(NamedTuple):
     rewards: jnp.ndarray
     next_observations: jnp.ndarray
     dones: jnp.ndarray
+    dones_float: jnp.ndarray
 
 
 def get_transitions(
@@ -41,34 +42,34 @@ def get_transitions(
     normalize_state: bool = False,
     normalize_reward: bool = False,
 ) -> Transition:
-
+    dataset = jax.tree_util.tree_map(lambda x: np.array(x), dataset)
     if clip_to_eps:
         lim = 1 - eps
         dataset["actions"] = np.clip(dataset["actions"], -lim, lim)
 
-    imputed_next_observations = np.roll(dataset["observations"], -1, axis=0)
-    same_obs = np.all(
-        np.isclose(imputed_next_observations, dataset["next_observations"], atol=1e-5),
-        axis=-1,
-    )
-    dones = 1.0 - same_obs.astype(np.float32)
-    dones[-1] = 1
+    dones_float = np.zeros_like(dataset['rewards'])
+
+    for i in range(len(dones_float) - 1):
+        if np.linalg.norm(dataset['observations'][i + 1] -
+                            dataset['next_observations'][i]
+                            ) > 1e-6 or dataset['terminals'][i] == 1.0:
+            dones_float[i] = 1
+        else:
+            dones_float[i] = 0
+    dones_float[-1] = 1
 
     dataset = Transition(
         observations=jnp.array(dataset["observations"], dtype=jnp.float32),
         actions=jnp.array(dataset["actions"], dtype=jnp.float32),
         rewards=jnp.array(dataset["rewards"], dtype=jnp.float32),
         next_observations=jnp.array(dataset["next_observations"], dtype=jnp.float32),
-        dones=jnp.array(dones, dtype=jnp.float32),
+        dones=jnp.array(dataset["terminals"], dtype=jnp.float32),
+        dones_float=jnp.array(dones_float, dtype=jnp.float32),
     )
-    # shuffle data and select the first data_size samples
-    data_size = min(config.data.size, len(dataset.observations))
-    rng = jax.random.PRNGKey(config.seed)
-    rng, rng_permute, rng_select = jax.random.split(rng, 3)
-    perm = jax.random.permutation(rng_permute, len(dataset.observations))
-    dataset = jax.tree_util.tree_map(lambda x: x[perm], dataset)
-    assert len(dataset.observations) >= data_size
-    dataset = jax.tree_util.tree_map(lambda x: x[:data_size], dataset)
+    if "antmaze" in config.env_name:
+        dataset = dataset._replace(
+            rewards=dataset.rewards - 1.0
+        )
     # normalize states
     obs_mean, obs_std = 0, 1
     if normalize_state:
@@ -78,9 +79,19 @@ def get_transitions(
             observations=(dataset.observations - obs_mean) / (obs_std + 1e-5),
             next_observations=(dataset.next_observations - obs_mean) / (obs_std + 1e-5),
         )
-    if normalize_reward:  # normalize rewards
+    # normalize rewards
+    if normalize_reward:    
         normalizing_factor = get_normalization(dataset)
         dataset = dataset._replace(rewards=dataset.rewards / normalizing_factor)
+    
+    # shuffle data and select the first data_size samples
+    data_size = min(config.data.size, len(dataset.observations))
+    rng = jax.random.PRNGKey(config.seed)
+    rng, rng_permute, rng_select = jax.random.split(rng, 3)
+    perm = jax.random.permutation(rng_permute, len(dataset.observations))
+    dataset = jax.tree_util.tree_map(lambda x: x[perm], dataset)
+    assert len(dataset.observations) >= data_size
+    dataset = jax.tree_util.tree_map(lambda x: x[:data_size], dataset)
     return dataset, obs_mean, obs_std
 
 

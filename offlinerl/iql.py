@@ -24,8 +24,8 @@ import wandb
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=True"
 
 
-def default_init(scale: Optional[float] = 1.0):
-    return nn.initializers.variance_scaling(scale, "fan_avg", "uniform")
+def default_init(scale: Optional[float] = jnp.sqrt(2)):
+    return nn.initializers.orthogonal(scale)
 
 
 class MLP(nn.Module):
@@ -33,12 +33,15 @@ class MLP(nn.Module):
     activations: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
     activate_final: bool = False
     kernel_init: Callable[[Any, Sequence[int], Any], jnp.ndarray] = default_init()
+    layer_norm: bool = False
 
     @nn.compact
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
         for i, hidden_dims in enumerate(self.hidden_dims):
             x = nn.Dense(hidden_dims, kernel_init=self.kernel_init)(x)
             if i + 1 < len(self.hidden_dims) or self.activate_final:
+                if self.layer_norm:  # Add layer norm after activation
+                    x = nn.LayerNorm()(x)
                 x = self.activations(x)
         return x
 
@@ -69,19 +72,19 @@ def ensemblize(cls, num_qs, out_axes=0, **kwargs):
 
 class ValueCritic(nn.Module):
     hidden_dims: Sequence[int]
+    layer_norm: bool = False
 
     @nn.compact
     def __call__(self, observations: jnp.ndarray) -> jnp.ndarray:
-        critic = MLP((*self.hidden_dims, 1))(observations)
+        critic = MLP((*self.hidden_dims, 1), layer_norm=self.layer_norm)(observations)
         return jnp.squeeze(critic, -1)
 
 
 class GaussianPolicy(nn.Module):
     hidden_dims: Sequence[int]
     action_dim: int
-    log_std_min: Optional[float] = -10
+    log_std_min: Optional[float] = -5.0
     log_std_max: Optional[float] = 2
-    final_fc_init_scale: float = 1e-3
 
     @nn.compact
     def __call__(
@@ -93,7 +96,7 @@ class GaussianPolicy(nn.Module):
         )(observations)
 
         means = nn.Dense(
-            self.action_dim, kernel_init=default_init(self.final_fc_init_scale)
+            self.action_dim, kernel_init=default_init()
         )(outputs)
         log_stds = self.param("log_stds", nn.initializers.zeros, (self.action_dim,))
         log_stds = jnp.clip(log_stds, self.log_std_min, self.log_std_max)
@@ -110,6 +113,20 @@ class Transition(NamedTuple):
     rewards: jnp.ndarray
     next_observations: jnp.ndarray
     dones: jnp.ndarray
+    dones_float: jnp.ndarray
+
+
+def get_normalization(dataset: Transition) -> float:
+    # into numpy.ndarray
+    dataset = jax.tree_util.tree_map(lambda x: np.array(x), dataset)
+    returns = []
+    ret = 0
+    for r, term in zip(dataset.rewards, dataset.dones_float):
+        ret += r
+        if term:
+            returns.append(ret)
+            ret = 0
+    return (max(returns) - min(returns)) / 1000
 
 
 def expectile_loss(diff, expectile=0.8) -> jnp.ndarray:
@@ -144,17 +161,19 @@ class IQLTrainState(NamedTuple):
 
 
 class IQL(object):
+
     @classmethod
     def update_critic(
-        self, train_state: IQLTrainState, batch: Transition, config
+        self, train_state: IQLTrainState, batch: Transition, config: Dict
     ) -> Tuple["IQLTrainState", Dict]:
+        next_v = train_state.value.apply_fn(
+            train_state.value.params, batch.next_observations
+        )
+        target_q = batch.rewards + config.discount * (1 - batch.dones) * next_v
+        
         def critic_loss_fn(
             critic_params: flax.core.FrozenDict[str, Any]
         ) -> jnp.ndarray:
-            next_v = train_state.value.apply_fn(
-                train_state.value.params, batch.next_observations
-            )
-            target_q = batch.rewards + config.discount * (1 - batch.dones) * next_v
             q1, q2 = train_state.critic.apply_fn(
                 critic_params, batch.observations, batch.actions
             )
@@ -168,15 +187,15 @@ class IQL(object):
 
     @classmethod
     def update_value(
-        self, train_state: IQLTrainState, batch: Transition, config
+        self, train_state: IQLTrainState, batch: Transition, config: Dict
     ) -> Tuple["IQLTrainState", Dict]:
+        q1, q2 = train_state.target_critic.apply_fn(
+            train_state.target_critic.params, batch.observations, batch.actions
+        )
+        q = jax.lax.stop_gradient(jnp.minimum(q1, q2))
         def value_loss_fn(value_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
-            q1, q2 = train_state.target_critic.apply_fn(
-                train_state.target_critic.params, batch.observations, batch.actions
-            )
-            q = jax.lax.stop_gradient(jnp.minimum(q1, q2))
             v = train_state.value.apply_fn(value_params, batch.observations)
-            value_loss = expectile_loss(q - v, config.tau).mean()
+            value_loss = expectile_loss(q - v, config.expectile).mean()
             return value_loss
 
         new_value, value_loss = update_by_loss_grad(train_state.value, value_loss_fn)
@@ -184,17 +203,16 @@ class IQL(object):
 
     @classmethod
     def update_actor(
-        self, train_state: IQLTrainState, batch: Transition, config
+        self, train_state: IQLTrainState, batch: Transition, config: Dict
     ) -> Tuple["IQLTrainState", Dict]:
+        v = train_state.value.apply_fn(train_state.value.params, batch.observations)
+        q1, q2 = train_state.critic.apply_fn(
+            train_state.target_critic.params, batch.observations, batch.actions
+        )
+        q = jnp.minimum(q1, q2)
+        exp_a = jnp.exp((q - v) * config.beta)
+        exp_a = jnp.minimum(exp_a, 100.0)
         def actor_loss_fn(actor_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
-            v = train_state.value.apply_fn(train_state.value.params, batch.observations)
-            q1, q2 = train_state.critic.apply_fn(
-                train_state.critic.params, batch.observations, batch.actions
-            )
-            q = jnp.minimum(q1, q2)
-            exp_a = jnp.exp((q - v) * config.beta)
-            exp_a = jnp.minimum(exp_a, 100.0)
-
             dist = train_state.actor.apply_fn(actor_params, batch.observations)
             log_probs = dist.log_prob(batch.actions)
             actor_loss = -(exp_a * log_probs).mean()
@@ -209,10 +227,9 @@ class IQL(object):
         train_state: IQLTrainState,
         dataset: Transition,
         rng: jax.random.PRNGKey,
-        config,
+        config: Dict,
     ) -> Tuple["IQLTrainState", Dict]:
-        def loop_fn(carry, _):
-            train_state, rng = carry
+        for _ in range(config.n_jitted_updates):
             rng, subkey = jax.random.split(rng)
             batch_indices = jax.random.randint(
                 subkey, (config.batch_size,), 0, len(dataset.observations)
@@ -226,16 +243,11 @@ class IQL(object):
                 train_state.critic, train_state.target_critic, config.tau
             )
             train_state = train_state._replace(target_critic=new_target_critic)
-            return (train_state, rng), {
-                "value_loss": value_loss,
-                "actor_loss": actor_loss,
-                "critic_loss": critic_loss,
-            }
-
-        (train_state, _), losses = jax.lax.scan(
-            loop_fn, (train_state, rng), jnp.arange(config.n_jitted_updates)
-        )
-        return train_state, losses
+        return train_state, {
+            "value_loss": value_loss,
+            "actor_loss": actor_loss,
+            "critic_loss": critic_loss,
+        }
 
     @classmethod
     def get_action(
@@ -254,10 +266,10 @@ class IQL(object):
 
 
 def create_iql_train_state(
-    rng,
+    rng: jax.random.PRNGKey,
     observations: jnp.ndarray,
     actions: jnp.ndarray,
-    config,
+    config: Dict,
 ) -> IQLTrainState:
     rng, actor_rng, critic_rng, value_rng = jax.random.split(rng, 4)
     # initialize actor
@@ -267,8 +279,11 @@ def create_iql_train_state(
         action_dim=action_dim,
         log_std_min=-5.0,
     )
-    schedule_fn = optax.cosine_decay_schedule(-config.actor_lr, config.max_steps)
-    actor_tx = optax.chain(optax.scale_by_adam(), optax.scale_by_schedule(schedule_fn))
+    if config.opt_decay_schedule:
+        schedule_fn = optax.cosine_decay_schedule(-config.actor_lr, config.max_steps)
+        actor_tx = optax.chain(optax.scale_by_adam(), optax.scale_by_schedule(schedule_fn))
+    else:
+        actor_tx = optax.adam(learning_rate=config.actor_lr)
     actor = TrainState.create(
         apply_fn=actor_model.apply,
         params=actor_model.init(actor_rng, observations),
@@ -287,7 +302,7 @@ def create_iql_train_state(
         tx=optax.adam(learning_rate=config.critic_lr),
     )
     # initialize value
-    value_model = ValueCritic(config.hidden_dims)
+    value_model = ValueCritic(config.hidden_dims, layer_norm=config.layer_norm)
     value = TrainState.create(
         apply_fn=value_model.apply,
         params=value_model.init(value_rng, observations),

@@ -10,7 +10,6 @@ eval_episodes: 10
 log_interval: 10
 
 data:
-  env_name: hopper
   shift: body_mass
   positive_data_quality: medium_expert
   negative_data_quality: medium_expert
