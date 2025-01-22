@@ -146,7 +146,7 @@ def train(config: OfflineRLConfig):
         train_state, loss = train_vj(train_state, dataset, rngs, algo_config)
         if step % eval_interval == 0:
             eval_return = eval_fn(train_state)
-            normalized_eval_return = [math.floor(positive_data_env.get_normalized_score(eval_return[i]) * 100) for i in range(config.n_seeds)]
+            normalized_eval_return = [math.round(positive_data_env.get_normalized_score(eval_return[i]) * 100, 2) for i in range(config.n_seeds)]
             eval_returns.append(normalized_eval_return)
             print(f"step: {step}, eval_return: {eval_return}, normalized_eval_return: {normalized_eval_return}")
     
