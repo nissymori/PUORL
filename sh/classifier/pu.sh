@@ -13,7 +13,7 @@ for shift in "body_mass"; do
         for positive_data_quality in "medium_expert" "medium"; do
             for negative_data_quality in "medium_expert" "medium" "random"; do
                 # if positive is medium and negative is medium_expert, skip
-                if positive_data_quality == "medium" && negative_data_quality == "medium_expert"; then
+                if [ "$positive_data_quality" = "medium" ] && [ "$negative_data_quality" = "medium_expert" ]; then
                     continue
                 fi
                 for positive_ratio in 0.3; do
@@ -45,7 +45,7 @@ for shift in "halfcheetah_vs_walker2d"; do
     for positive_data_quality in "medium_expert" "medium"; do
         for negative_data_quality in "medium_expert" "medium" "random"; do
             # if positive is medium and negative is medium_expert, skip
-            if positive_data_quality == "medium" && negative_data_quality == "medium_expert"; then
+            if [ "$positive_data_quality" = "medium" ] && [ "$negative_data_quality" = "medium_expert" ]; then
                 continue
             fi
             for positive_ratio in 0.3; do
