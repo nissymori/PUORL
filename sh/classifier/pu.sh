@@ -19,7 +19,7 @@ for shift in "body_mass"; do
                 for positive_ratio in 0.3; do
                     for labeled_ratio in 0.01 0.03; do
                         for method in "pu"; do
-                            python train_classifier.py --config_path=configs/classifier/pu.yaml \
+                            python train_classifier.py --config_path=configs/classification/pu.yaml \
                             --data.shift=$shift \
                             --env_name=$env_name \
                             --data.positive_data_quality=$positive_data_quality \
@@ -51,14 +51,14 @@ for shift in "halfcheetah_vs_walker2d"; do
             for positive_ratio in 0.3; do
                 for labeled_ratio in 0.01 0.03; do
                     for method in "pu"; do
-                        python train_classifier.py --config_path=configs/classifier/pu.yaml \
+                        python train_classifier.py --config_path=configs/classification/pu.yaml \
                         --data.shift=$shift \
                         --env_name=$env_name \
                         --data.positive_data_quality=$positive_data_quality \
                         --data.negative_data_quality=$negative_data_quality \
                         --data.positive_ratio=$positive_ratio \
                         --data.labeled_ratio=$labeled_ratio \
-                        --method=$method
+                        --method=$method \
                         --seed=$seed
                     done
                 done
