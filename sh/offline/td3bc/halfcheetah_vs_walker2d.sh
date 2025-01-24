@@ -9,6 +9,7 @@ cd ../../..
 
 # The eval env is always HalfCheetah-v3
 eval_env_name="HalfCheetah-v3"
+env_name="halfcheetah"
 
 # sharing all, unly positive
 for shift in "halfcheetah_vs_walker2d"; do
@@ -23,6 +24,7 @@ for shift in "halfcheetah_vs_walker2d"; do
                     for method in "sharing_all" "only_p"; do
                         python train_agent.py --config_path=configs/offline/td3bc.yaml \
                         --data.shift=$shift \
+                        --env_name=$env_name \
                         --eval_env_name=$eval_env_name \
                         --data.positive_data_quality=$positive_data_quality \
                         --data.negative_data_quality=$negative_data_quality \
@@ -45,6 +47,7 @@ for shift in "halfcheetah_vs_walker2d"; do
             for method in "oracle"; do
                 python train_agent.py --config_path=configs/offline/td3bc.yaml \
                 --data.shift=$shift \
+                --env_name=$env_name \
                 --eval_env_name=$eval_env_name \
                 --data.positive_data_quality=$positive_data_quality \
                 --data.positive_ratio=$positive_ratio \
