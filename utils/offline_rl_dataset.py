@@ -308,7 +308,7 @@ def filtering_by_label(
         filtered_datadict = concatenate_datadict(
             positively_labeled_datadict,
             filtered_datadict,
-            positive_labeled_num,
+            labeled_positive_num,
             len(filtered_datadict["observations"]),
             add_true_labels=False,
         )
