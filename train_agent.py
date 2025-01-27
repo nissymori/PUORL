@@ -85,18 +85,14 @@ def train(config: OfflineRLConfig):
     if config.method == "pu" or config.method == "pvu" or config.method == "dara-pu" or config.method == "dara-pvu":
         # load classifier if method is pu
         sas_net_param = torch.load(sas_net_param_path)
-        sa_net_param = torch.load(sa_net_param_path)
-        # remove module
-        from collections import OrderedDict
-        new_sas_net_param = OrderedDict()
-        new_sa_net_param = OrderedDict()
-        for key, value in sas_net_param.items():
-            new_sas_net_param[key[7:]] = value
-        for key, value in sa_net_param.items():
-            new_sa_net_param[key[7:]] = value
-
-        sas_net.load_state_dict(new_sas_net_param)
-        sa_net.load_state_dict(new_sa_net_param)
+        sas_net.load_state_dict(sas_net_param)            
+        
+        if config.method == "dara-pu" or config.method == "dara-pvu":
+            sa_net_param = torch.load(sa_net_param_path)
+            new_sa_net_param = OrderedDict()
+            for key, value in sa_net_param.items():
+                new_sa_net_param[key[7:]] = value
+            sa_net.load_state_dict(new_sa_net_param, strict=False)
 
     # make agent
     algo, create_train_state, algo_config = make_agent(config)
