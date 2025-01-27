@@ -57,8 +57,8 @@
   - [ ] me vs me
   - [ ] me vs m
   - [ ] me vs r
-  - [ ] m vs m
-  - [ ] m vs r
+  - [x] m vs m
+  - [x] m vs r
 - hopper
   - [x] me vs me
   - [x] me vs m
