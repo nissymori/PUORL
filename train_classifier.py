@@ -47,7 +47,9 @@ def train(config):
 
     alpha = (unlabeled_num - negative_num) / unlabeled_num  # positive data in unlabeled
     beta = (positive_num + negative_num - unlabeled_num) / (positive_num + negative_num)  # labeled data ratio
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    device = "cpu"
 
     (
         p_trainloader,
