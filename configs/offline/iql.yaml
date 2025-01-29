@@ -1,0 +1,40 @@
+project: puorl
+env_name: hopper
+eval_env_name: Hopper-v3
+seed: 0
+n_seeds: 2
+algorithm: iql
+method: sharing_all
+max_steps: 1000000
+eval_episodes: 5
+log_interval: 10
+vectorized: True
+
+data:
+  shift: body_mass
+  positive_data_quality: medium_expert
+  negative_data_quality: medium_expert
+  input_type: sas
+  labeled_ratio: 0.05
+  positive_ratio: 0.7
+  size: 1000000
+  train_ratio: 0.8
+
+
+iql:
+  max_steps: 1000000
+  batch_size: 256
+  n_jitted_updates: 8
+  normalize_reward: True
+  normalize_state: False
+  actor_lr: 3e-4
+  value_lr: 3e-4
+  critic_lr: 3e-4
+  layer_norm: True
+  opt_decay_schedule: True
+  expectile: 0.7
+  beta: 3.0
+  tau: 0.005
+  discount: 0.99
+
+

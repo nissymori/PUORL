@@ -20,6 +20,7 @@ class DataConfig:
 @dataclass
 class IQLConfig:
     # GENERAL
+    max_steps: int = 1000000
     batch_size: int = 256
     n_jitted_updates: int = 8
     normalize_reward: bool = True
@@ -29,9 +30,11 @@ class IQLConfig:
     actor_lr: float = 3e-4
     value_lr: float = 3e-4
     critic_lr: float = 3e-4
+    layer_norm: bool = True
+    opt_decay_schedule: bool = True
     # IQL SPECIFIC
     expectile: float = 0.7  # FYI: for Hopper-me, 0.5 produce better result from CORL
-    temperature: float = 3.0  # FYI: for Hopper-me, 6.0 produce better result from CORL
+    beta: float = 3.0  # FYI: for Hopper-me, 6.0 produce better result from CORL
     tau: float = 0.005
     discount: float = 0.99
 
@@ -85,6 +88,7 @@ class OfflineRLConfig:
     # classifier specification
     hidden_dims: Tuple[int, int] = (128, 128)
     classifier_hidden_dims: Tuple[int, int] = (256, 256)
+    vectorized: bool = True
 
     def __hash__(self):
         return hash(self.__repr__())

@@ -116,19 +116,6 @@ class Transition(NamedTuple):
     dones_float: jnp.ndarray
 
 
-def get_normalization(dataset: Transition) -> float:
-    # into numpy.ndarray
-    dataset = jax.tree_util.tree_map(lambda x: np.array(x), dataset)
-    returns = []
-    ret = 0
-    for r, term in zip(dataset.rewards, dataset.dones_float):
-        ret += r
-        if term:
-            returns.append(ret)
-            ret = 0
-    return (max(returns) - min(returns)) / 1000
-
-
 def expectile_loss(diff, expectile=0.8) -> jnp.ndarray:
     weight = jnp.where(diff > 0, expectile, (1 - expectile))
     return weight * (diff**2)
@@ -254,13 +241,14 @@ class IQL(object):
         self,
         train_state: IQLTrainState,
         observations: np.ndarray,
-        seed: jax.random.PRNGKey,
-        temperature: float = 1.0,
+        seed: int = 0,
+        temperature: float = 0.0,
         max_action: float = 1.0,  # In D4RL, the action space is [-1, 1]
     ) -> jnp.ndarray:
+        rng = jax.random.PRNGKey(seed)
         actions = train_state.actor.apply_fn(
             train_state.actor.params, observations, temperature=temperature
-        ).sample(seed=seed)
+        ).sample(seed=rng)
         actions = jnp.clip(actions, -max_action, max_action)
         return actions
 
