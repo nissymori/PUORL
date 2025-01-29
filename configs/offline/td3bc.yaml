@@ -6,7 +6,7 @@ n_seeds: 2
 algorithm: td3bc
 method: sharing_all
 max_steps: 1000000
-eval_episodes: 10
+eval_episodes: 5
 log_interval: 10
 vectorized: True
 
