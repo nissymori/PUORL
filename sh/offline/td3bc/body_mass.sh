@@ -29,7 +29,7 @@ for shift in "body_mass"; do
                 fi
                 for positive_ratio in 0.3; do
                     for labeled_ratio in 0.01 0.03; do
-                        for method in "sharing_all" "only_p"; do
+                        for method in "sharing_all" "only_p" "pu"; do
                             python train_agent.py --config_path=configs/offline/td3bc.yaml \
                             --data.shift=$shift \
                             --env_name=$env_name \

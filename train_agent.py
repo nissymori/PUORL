@@ -145,8 +145,13 @@ def train(config: OfflineRLConfig):
             eval_returns.append(normalized_eval_return)
             print(f"step: {step}, eval_return: {eval_return}, normalized_eval_return: {normalized_eval_return}")
     
+    final_eval_return = eval_fn(train_state)
+    normalized_final_eval_return = [round(float(positive_data_env.get_normalized_score(final_eval_return[i])) * 100, 2) for i in range(config.n_seeds)]
+    print(f"final_eval_return: {final_eval_return}, normalized_final_eval_return: {normalized_final_eval_return}")
+
     for seed in range(config.n_seeds):
         wandb.init(project=config.project, config=config, name=f"seed_{seed}", reinit=True)
+        wandb.log({"final_eval_return": normalized_final_eval_return[seed]})
         for step in range(len(eval_returns)):
             wandb.log({"eval_return": eval_returns[step][seed], "step": step * algo_config.n_jitted_updates * config.eval_interval})
 
