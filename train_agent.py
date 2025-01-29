@@ -113,14 +113,24 @@ def train(config: OfflineRLConfig):
     )
 
     # make evaluation function
-    eval_fn = make_evaluation(
-        eval_env,
-        config,
-        obs_mean,
-        obs_std,
-        algo.get_action,
-        vectorized=True,
-    )
+    if config.vectorized:  # use gym
+        eval_fn = make_evaluation(
+            positive_data_env,
+            config,
+            obs_mean,
+            obs_std,
+            algo.get_action,
+            vectorized=False,
+        )
+    else:  # use envpool
+        eval_fn = make_evaluation(
+            eval_env,
+            config,
+            obs_mean,
+            obs_std,
+            algo.get_action,
+            vectorized=True,
+        )
 
     # init train state
     rng = jax.random.PRNGKey(config.seed)

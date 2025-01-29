@@ -32,10 +32,10 @@ def shuffle_datadict(datadict: Dict) -> Dict:
     return shuffled_datadict
 
 
-def get_normalization(dataset: Dict) -> float:
+def get_normalization(dataset: Dict, dones_float: np.ndarray) -> float:
     returns = []
     ret = 0
-    for r, term in zip(dataset["rewards"], dataset["terminals"]):
+    for r, term in zip(dataset["rewards"], dones_float):
         ret += r
         if term:
             returns.append(ret)
@@ -44,7 +44,24 @@ def get_normalization(dataset: Dict) -> float:
 
 
 def normalize_dataset_reward(dataset: Dict):
-    normalizing_factor = get_normalization(dataset)
+    clip_to_eps = True
+    eps = 1e-5
+
+    if clip_to_eps:
+        lim = 1 - eps
+        dataset["actions"] = np.clip(dataset["actions"], -lim, lim)
+
+    dones_float = np.zeros_like(dataset['rewards'])
+
+    for i in range(len(dones_float) - 1):
+        if np.linalg.norm(dataset['observations'][i + 1] -
+                            dataset['next_observations'][i]
+                            ) > 1e-6 or dataset['terminals'][i] == 1.0:
+            dones_float[i] = 1
+        else:
+            dones_float[i] = 0
+    dones_float[-1] = 1
+    normalizing_factor = get_normalization(dataset, dones_float)
     dataset["rewards"] = np.array(dataset["rewards"]) / normalizing_factor
     return dataset
 

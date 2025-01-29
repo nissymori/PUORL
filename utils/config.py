@@ -88,6 +88,7 @@ class OfflineRLConfig:
     # classifier specification
     hidden_dims: Tuple[int, int] = (128, 128)
     classifier_hidden_dims: Tuple[int, int] = (256, 256)
+    vectorized: bool = True
 
     def __hash__(self):
         return hash(self.__repr__())

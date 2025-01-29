@@ -31,7 +31,6 @@ class Transition(NamedTuple):
     rewards: jnp.ndarray
     next_observations: jnp.ndarray
     dones: jnp.ndarray
-    dones_float: jnp.ndarray
 
 
 def get_transitions(
@@ -40,23 +39,11 @@ def get_transitions(
     clip_to_eps: bool = True,
     eps: float = 1e-5,
     normalize_state: bool = False,
-    normalize_reward: bool = False,
 ) -> Transition:
     dataset = jax.tree_util.tree_map(lambda x: np.array(x), dataset)
     if clip_to_eps:
         lim = 1 - eps
         dataset["actions"] = np.clip(dataset["actions"], -lim, lim)
-
-    dones_float = np.zeros_like(dataset['rewards'])
-
-    for i in range(len(dones_float) - 1):
-        if np.linalg.norm(dataset['observations'][i + 1] -
-                            dataset['next_observations'][i]
-                            ) > 1e-6 or dataset['terminals'][i] == 1.0:
-            dones_float[i] = 1
-        else:
-            dones_float[i] = 0
-    dones_float[-1] = 1
 
     dataset = Transition(
         observations=jnp.array(dataset["observations"], dtype=jnp.float32),
@@ -64,7 +51,6 @@ def get_transitions(
         rewards=jnp.array(dataset["rewards"], dtype=jnp.float32),
         next_observations=jnp.array(dataset["next_observations"], dtype=jnp.float32),
         dones=jnp.array(dataset["terminals"], dtype=jnp.float32),
-        dones_float=jnp.array(dones_float, dtype=jnp.float32),
     )
     if "antmaze" in config.env_name:
         dataset = dataset._replace(
@@ -113,7 +99,6 @@ def make_offline_rl_dataset(
         shifted_dataset_path, positive_env, config, normalize_reward
     )
 
-
     positive_datadict = shuffle_datadict(positive_datadict)
     negative_datadict = shuffle_datadict(negative_datadict)
 
@@ -145,7 +130,6 @@ def make_offline_rl_dataset(
         datadict,
         config,
         normalize_state=normalize_state,
-        normalize_reward=normalize_reward,
     )
     return dataset, obs_mean, obs_std
 

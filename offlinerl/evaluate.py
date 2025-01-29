@@ -21,18 +21,24 @@ def make_evaluation(
     n_seeds = config.n_seeds
 
     def eval_d4rl_single(train_state):
-        episode_returns = []
-        for _ in range(config.eval_episodes):
-            obs = env.reset()
-            done = False
-            episode_return = 0
-            while not done:
-                obs = (obs - obs_mean) / (obs_std)
-                action = actor_j(train_state, obs)
-                obs, reward, done, _ = env.step(action)
-                episode_return += reward
-            episode_returns.append(episode_return)
-        return np.mean(episode_returns)
+        n_seeds = config.n_seeds
+        returns = []
+        for i in range(n_seeds):
+            actor_params = jax.tree_util.tree_map(lambda x: x[i], train_state.actor.params)
+            ts = train_state._replace(actor=train_state.actor.replace(params=actor_params))
+            episode_returns = []
+            for _ in range(config.eval_episodes):
+                obs = env.reset()
+                done = False
+                episode_return = 0
+                while not done:
+                    obs = (obs - obs_mean) / (obs_std)
+                    action = actor_j(ts, obs)
+                    obs, reward, done, _ = env.step(action)
+                    episode_return += reward
+                episode_returns.append(episode_return)
+            returns.append(np.mean(episode_returns))
+        return np.array(returns)
 
     def eval_d4rl_vectorized(train_state):
         num_envs = n_seeds * config.eval_episodes
