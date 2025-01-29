@@ -8,7 +8,7 @@ cd ../../..
 ########################################################
 
 # sharing all, unly positive
-for shift in "mixture"; do
+for shift in "body_mass"; do
     for env_name in "hopper" "halfcheetah" "walker2d"; do  
         # if env_name is hopper, the eval env is Hopper-v3
         # if env_name is halfcheetah, the eval env is HalfCheetah-v3
@@ -29,7 +29,7 @@ for shift in "mixture"; do
                 for positive_ratio in 0.3; do
                     for labeled_ratio in 0.01 0.03; do
                         for method in "sharing_all" "only_p" "pu"; do
-                            python train_agent.py --config_path=configs/offline/td3bc.yaml \
+                            python train_agent.py --config_path=configs/offline/iql.yaml \
                             --data.shift=$shift \
                             --env_name=$env_name \
                             --eval_env_name=$eval_env_name \
@@ -49,7 +49,7 @@ for shift in "mixture"; do
 done
 
 # oracle
-for shift in "mixture"; do
+for shift in "body_mass"; do
     for env_name in "hopper" "halfcheetah" "walker2d"; do
         # if env_name is hopper, the eval env is Hopper-v3
         # if env_name is halfcheetah, the eval env is HalfCheetah-v3
@@ -64,7 +64,7 @@ for shift in "mixture"; do
         for positive_data_quality in "medium_expert" "medium"; do
             for positive_ratio in 0.3; do
                 for method in "oracle"; do
-                    python train_agent.py --config_path=configs/offline/td3bc.yaml \
+                    python train_agent.py --config_path=configs/offline/iql.yaml \
                     --data.shift=$shift \
                     --env_name=$env_name \
                     --eval_env_name=$eval_env_name \

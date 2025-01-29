@@ -1,6 +1,5 @@
 n_seeds=10
 seed=0
-project="puorl_offline_rl"
 
 cd ../../..
 

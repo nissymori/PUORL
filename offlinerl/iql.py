@@ -254,13 +254,14 @@ class IQL(object):
         self,
         train_state: IQLTrainState,
         observations: np.ndarray,
-        seed: jax.random.PRNGKey,
+        seed: int = 0,
         temperature: float = 1.0,
         max_action: float = 1.0,  # In D4RL, the action space is [-1, 1]
     ) -> jnp.ndarray:
+        rng = jax.random.PRNGKey(seed)
         actions = train_state.actor.apply_fn(
             train_state.actor.params, observations, temperature=temperature
-        ).sample(seed=seed)
+        ).sample(seed=rng)
         actions = jnp.clip(actions, -max_action, max_action)
         return actions
 
