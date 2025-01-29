@@ -79,10 +79,6 @@ def get_transitions(
             observations=(dataset.observations - obs_mean) / (obs_std + 1e-5),
             next_observations=(dataset.next_observations - obs_mean) / (obs_std + 1e-5),
         )
-    # normalize rewards
-    if normalize_reward:    
-        normalizing_factor = get_normalization(dataset)
-        dataset = dataset._replace(rewards=dataset.rewards / normalizing_factor)
     
     # shuffle data and select the first data_size samples
     data_size = min(config.data.size, len(dataset.observations))
@@ -93,19 +89,6 @@ def get_transitions(
     assert len(dataset.observations) >= data_size
     dataset = jax.tree_util.tree_map(lambda x: x[:data_size], dataset)
     return dataset, obs_mean, obs_std
-
-
-def get_normalization(dataset: Transition) -> float:
-    # into numpy.ndarray
-    dataset = jax.tree_util.tree_map(lambda x: np.array(x), dataset)
-    returns = []
-    ret = 0
-    for r, term in zip(dataset.rewards, dataset.dones):
-        ret += r
-        if term:
-            returns.append(ret)
-            ret = 0
-    return (max(returns) - min(returns)) / 1000
 
 
 def make_offline_rl_dataset(
@@ -127,8 +110,10 @@ def make_offline_rl_dataset(
     :return: rl dataset (D4RL format)
     """
     positive_datadict, negative_datadict = make_pos_neg_datadict(
-        shifted_dataset_path, positive_env, config
+        shifted_dataset_path, positive_env, config, normalize_reward
     )
+
+
     positive_datadict = shuffle_datadict(positive_datadict)
     negative_datadict = shuffle_datadict(negative_datadict)
 
