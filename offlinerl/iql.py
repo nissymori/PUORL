@@ -1,5 +1,5 @@
-# source https://github.com/ikostrikov/implicit_q_learning
-# https://arxiv.org/abs/2110.06169
+# copied and modified from https://github.com/nissymori/JAX-CORL
+# paper https://arxiv.org/abs/2110.06169
 import os
 import time
 from functools import partial
