@@ -2,6 +2,15 @@
 
 Official implementation of Positive and Unlabeled Offline Reinforcement Learning (PUORL)
 
+### How to install
+```
+git clone https://github.com/nissymori/PUORL.gitn
+```
+
+```
+pip install -r requirements.txt
+```
+
 ### How to reproduce
 
 1. Download data
