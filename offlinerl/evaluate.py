@@ -24,8 +24,12 @@ def make_evaluation(
         n_seeds = config.n_seeds
         returns = []
         for i in range(n_seeds):
-            actor_params = jax.tree_util.tree_map(lambda x: x[i], train_state.actor.params)
-            ts = train_state._replace(actor=train_state.actor.replace(params=actor_params))
+            actor_params = jax.tree_util.tree_map(
+                lambda x: x[i], train_state.actor.params
+            )
+            ts = train_state._replace(
+                actor=train_state.actor.replace(params=actor_params)
+            )
             episode_returns = []
             for _ in range(config.eval_episodes):
                 obs = env.reset()

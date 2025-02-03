@@ -95,9 +95,7 @@ class GaussianPolicy(nn.Module):
             activate_final=True,
         )(observations)
 
-        means = nn.Dense(
-            self.action_dim, kernel_init=default_init()
-        )(outputs)
+        means = nn.Dense(self.action_dim, kernel_init=default_init())(outputs)
         log_stds = self.param("log_stds", nn.initializers.zeros, (self.action_dim,))
         log_stds = jnp.clip(log_stds, self.log_std_min, self.log_std_max)
 
@@ -157,7 +155,7 @@ class IQL(object):
             train_state.value.params, batch.next_observations
         )
         target_q = batch.rewards + config.discount * (1 - batch.dones) * next_v
-        
+
         def critic_loss_fn(
             critic_params: flax.core.FrozenDict[str, Any]
         ) -> jnp.ndarray:
@@ -180,6 +178,7 @@ class IQL(object):
             train_state.target_critic.params, batch.observations, batch.actions
         )
         q = jax.lax.stop_gradient(jnp.minimum(q1, q2))
+
         def value_loss_fn(value_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
             v = train_state.value.apply_fn(value_params, batch.observations)
             value_loss = expectile_loss(q - v, config.expectile).mean()
@@ -199,6 +198,7 @@ class IQL(object):
         q = jnp.minimum(q1, q2)
         exp_a = jnp.exp((q - v) * config.beta)
         exp_a = jnp.minimum(exp_a, 100.0)
+
         def actor_loss_fn(actor_params: flax.core.FrozenDict[str, Any]) -> jnp.ndarray:
             dist = train_state.actor.apply_fn(actor_params, batch.observations)
             log_probs = dist.log_prob(batch.actions)
@@ -269,7 +269,9 @@ def create_iql_train_state(
     )
     if config.opt_decay_schedule:
         schedule_fn = optax.cosine_decay_schedule(-config.actor_lr, config.max_steps)
-        actor_tx = optax.chain(optax.scale_by_adam(), optax.scale_by_schedule(schedule_fn))
+        actor_tx = optax.chain(
+            optax.scale_by_adam(), optax.scale_by_schedule(schedule_fn)
+        )
     else:
         actor_tx = optax.adam(learning_rate=config.actor_lr)
     actor = TrainState.create(

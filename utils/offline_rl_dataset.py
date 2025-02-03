@@ -53,9 +53,7 @@ def get_transitions(
         dones=jnp.array(dataset["terminals"], dtype=jnp.float32),
     )
     if "antmaze" in config.env_name:
-        dataset = dataset._replace(
-            rewards=dataset.rewards - 1.0
-        )
+        dataset = dataset._replace(rewards=dataset.rewards - 1.0)
     # normalize states
     obs_mean, obs_std = 0, 1
     if normalize_state:
@@ -65,7 +63,7 @@ def get_transitions(
             observations=(dataset.observations - obs_mean) / (obs_std + 1e-5),
             next_observations=(dataset.next_observations - obs_mean) / (obs_std + 1e-5),
         )
-    
+
     # shuffle data and select the first data_size samples
     data_size = min(config.data.size, len(dataset.observations))
     rng = jax.random.PRNGKey(config.seed)
@@ -122,7 +120,7 @@ def make_offline_rl_dataset(
         datadict = filtering_by_label(
             datadict, target, sas_net, config
         )  # filter positive
-    
+
     if config.method == "dara-pu" or config.method == "dara-pvu":
         datadict = augment_by_dara(datadict, sas_net, sa_net, config)
 
@@ -292,8 +290,7 @@ def augment_by_dara(datadict, sas_net, sa_net, config):
     positive_indices = np.where(datadict["true_labels"] == 0)[0]
     negative_indices = np.where(datadict["true_labels"] == 1)[0]
     positive_labeled_num = int(
-        (len(positive_indices) + len(negative_indices))
-        * config.data.labeled_ratio
+        (len(positive_indices) + len(negative_indices)) * config.data.labeled_ratio
     )
     # separate positive data into labeled and unlabeled
     positively_labeled_datadict = {

@@ -40,7 +40,7 @@ def get_normalization(dataset: Dict, dones_float: np.ndarray) -> float:
         if term:
             returns.append(ret)
             ret = 0
-    return (max(returns) - min(returns)) / 1000     
+    return (max(returns) - min(returns)) / 1000
 
 
 def normalize_dataset_reward(dataset: Dict):
@@ -51,12 +51,16 @@ def normalize_dataset_reward(dataset: Dict):
         lim = 1 - eps
         dataset["actions"] = np.clip(dataset["actions"], -lim, lim)
 
-    dones_float = np.zeros_like(dataset['rewards'])
+    dones_float = np.zeros_like(dataset["rewards"])
 
     for i in range(len(dones_float) - 1):
-        if np.linalg.norm(dataset['observations'][i + 1] -
-                            dataset['next_observations'][i]
-                            ) > 1e-6 or dataset['terminals'][i] == 1.0:
+        if (
+            np.linalg.norm(
+                dataset["observations"][i + 1] - dataset["next_observations"][i]
+            )
+            > 1e-6
+            or dataset["terminals"][i] == 1.0
+        ):
             dones_float[i] = 1
         else:
             dones_float[i] = 0
