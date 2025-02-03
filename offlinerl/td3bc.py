@@ -16,8 +16,6 @@ import numpy as np
 import optax
 import tqdm
 from flax.training.train_state import TrainState
-from omegaconf import OmegaConf
-from pydantic import BaseModel
 
 import wandb
 
