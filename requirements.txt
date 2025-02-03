@@ -1,0 +1,27 @@
+# install your own version of jax
+distrax
+optax
+flax
+
+# related to d4rl
+git+https://github.com/Farama-Foundation/d4rl@master#egg=d4rl
+gym==0.23.1
+cython==0.29.22
+mujoco-py==2.1.2.14
+numpy<2
+h5py
+
+# for fmt
+black
+isort
+mypy
+blackdoc
+flake8
+
+pyrallis
+wandb
+tqdm
+
+torch
+sys
+IPython
