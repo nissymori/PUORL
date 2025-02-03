@@ -1,6 +1,6 @@
 # PUORL
 
-Official implementation of Positive and Unlabeled Offline Reinforcement Learning (PUORL)
+Official implementation of Positive and Unlabeled Offline Reinforcement Learning (PUORL). Baseline implementation is [here](https://github.com/nissymori/cdorl_baseline.git).
 
 ### How to install
 ```
