@@ -33,6 +33,10 @@ python download.py
 ./body_mass.sh
 ```
 
+### Wandb results for reported result
+- [td3bc](https://api.wandb.ai/links/nissymori/bggvrl71)
+- [iql](https://api.wandb.ai/links/nissymori/y1araz5i)
+
 ### Citeation
 
 
