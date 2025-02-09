@@ -211,10 +211,10 @@ def train(config):
         f"{config.env_name}/final_pos_test_acc": final_pos_test_acc,
         f"{config.env_name}/final_neg_test_acc": final_neg_test_acc,
     }
-    torch.save(net.state_dict(), param_path)
     wandb.log(log)
     wandb.finish()
-
+    if config.save_model:
+        torch.save(net.state_dict(), param_path)
 
 if __name__ == "__main__":
     main()
