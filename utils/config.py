@@ -111,6 +111,7 @@ class ClassifierConfig:
     batch_size: int = 256
     # method
     method: str = "pu"  # (pu, pvu)
+    save_model: bool = False
 
     def __hash__(self):
         return hash(self.__repr__())
