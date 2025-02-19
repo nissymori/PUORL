@@ -36,6 +36,7 @@ python download.py
 ### Wandb results for reported result
 - [td3bc](https://api.wandb.ai/links/nissymori/bggvrl71)
 - [iql](https://api.wandb.ai/links/nissymori/y1araz5i)
+- [classifier](https://api.wandb.ai/links/nissymori/sp87jczy)
 
 ### Citeation
 
