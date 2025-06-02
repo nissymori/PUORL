@@ -11,6 +11,7 @@ d3rlpy_logs
 D4RL
 fig
 MUJOCO_LOG.TXT
+_params/
 
 # C extensions
 *.so
