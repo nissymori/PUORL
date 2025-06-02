@@ -1,6 +1,6 @@
 # PUORL
 
-Official implementation of Positive and Unlabeled Offline Reinforcement Learning (PUORL). Baseline implementation is [here](https://github.com/nissymori/cdorl_baseline.git).
+Official implementation of [Offline Reinforcement Learning with Domain-Unlabeled Data](https://arxiv.org/abs/2404.07465). Baseline implementation is [here](https://github.com/nissymori/cdorl_baseline.git).
 
 ### How to install
 ```
@@ -39,5 +39,13 @@ python download.py
 - [classifier](https://api.wandb.ai/links/nissymori/sp87jczy)
 
 ### Citeation
+```
+@inproceedings{nishimorioffline,
+  title={Offline Reinforcement Learning with Domain-Unlabeled Data},
+  author={Nishimori, Soichiro and Cai, Xin-Qiang and Ackermann, Johannes and Sugiyama, Masashi},
+  year={2025},
+  booktitle={Reinforcement Learning Conference}
+}
+```
 
 
