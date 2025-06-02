@@ -1,6 +1,6 @@
 # Offline Reinforcement Learning with Domain-Unlabeled Data
 
-Official implementation of [Offline Reinforcement Learning with Domain-Unlabeled Data](https://arxiv.org/abs/2404.07465). The offline RL implementations are borrowed from [JAX-CORL](https://github.com/nissymori/JAX-CORL).
+Official implementation of [Offline Reinforcement Learning with Domain-Unlabeled Data](https://arxiv.org/abs/2404.07465)   accepted at RLC 2025. The offline RL implementations are borrowed from [JAX-CORL](https://github.com/nissymori/JAX-CORL).
 
 ### How to install
 ```
