@@ -40,11 +40,13 @@ python download.py
 
 ### Citeation
 ```
-@inproceedings{nishimorioffline,
-  title={Offline Reinforcement Learning with Domain-Unlabeled Data},
-  author={Nishimori, Soichiro and Cai, Xin-Qiang and Ackermann, Johannes and Sugiyama, Masashi},
-  year={2025},
-  booktitle={Reinforcement Learning Conference}
+@article{nishimori2025offline,
+    title={Offline Reinforcement Learning with Domain-Unlabeled Data},
+    author={Nishimori, Soichiro and Cai, Xin-Qiang and Ackermann, Johannes and Sugiyama, Masashi},
+    journal={Reinforcement Learning Journal},
+    volume={6},
+    pages={1773--1793},
+    year={2025}
 }
 ```
 
