@@ -42,7 +42,7 @@ python download.py
 - [classifier](https://api.wandb.ai/links/nissymori/sp87jczy)
 
 ### Citeation
-```
+```bibtex
 @article{nishimori2025offline,
     title={Offline Reinforcement Learning with Domain-Unlabeled Data},
     author={Nishimori, Soichiro and Cai, Xin-Qiang and Ackermann, Johannes and Sugiyama, Masashi},
